@@ -27,16 +27,10 @@ nav.navbar {
 .navbar .navbar-brand img,
 .navbar .app-logo,
 .navbar-brand img {
-  max-height: 24px !important;
-  height: 24px !important;
+  max-height: 18px !important;
+  height: 18px !important;
   width: auto !important;
   object-fit: contain;
-}
-
-/* Make logo visible on dark navbar */
-.navbar .navbar-brand img,
-.navbar .app-logo {
-  filter: brightness(0) invert(1);
 }
 
 /* ─── Navbar text ─── */
