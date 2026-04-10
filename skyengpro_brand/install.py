@@ -33,7 +33,7 @@ def copy_brand_assets():
     for fname in BRAND_FILES:
         src = os.path.join(app_files_dir, fname)
         dst = os.path.join(site_files_dir, fname)
-        if os.path.exists(src) and not os.path.exists(dst):
+        if os.path.exists(src):
             shutil.copy2(src, dst)
             frappe.logger().info(f"SkyEngPro brand: copied {fname}")
 
