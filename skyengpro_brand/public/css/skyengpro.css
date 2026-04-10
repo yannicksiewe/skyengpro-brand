@@ -1,0 +1,130 @@
+/*
+ * SkyEngPro brand theme for ERPNext / Frappe v15
+ * Colors: orange #CC7A1A, dark gray #4A4A4A, light gray #F5F5F5
+ * Safe: pure CSS override, no JS hooks, no DocType dependencies
+ */
+
+:root {
+  --skyengpro-orange: #CC7A1A;
+  --skyengpro-orange-hover: #B56A12;
+  --skyengpro-orange-light: #F5E6D0;
+  --skyengpro-gray-dark: #4A4A4A;
+  --skyengpro-gray-medium: #6B6B6B;
+  --skyengpro-gray-light: #F5F5F5;
+}
+
+/* ─── Navbar ─── */
+.navbar {
+  background-color: var(--skyengpro-gray-dark) !important;
+  border-bottom: 2px solid var(--skyengpro-orange) !important;
+}
+
+.navbar .navbar-brand img,
+.navbar .app-logo {
+  filter: brightness(0) invert(1);
+}
+
+.navbar .nav-link,
+.navbar .navbar-nav .nav-link,
+.navbar .search-bar .search-input {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.navbar .nav-link:hover,
+.navbar .navbar-nav .nav-link:hover {
+  color: var(--skyengpro-orange) !important;
+}
+
+/* ─── Primary buttons ─── */
+.btn-primary,
+.btn-primary-dark {
+  background-color: var(--skyengpro-orange) !important;
+  border-color: var(--skyengpro-orange) !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary-dark:hover {
+  background-color: var(--skyengpro-orange-hover) !important;
+  border-color: var(--skyengpro-orange-hover) !important;
+}
+
+.btn-primary:active,
+.btn-primary.active {
+  background-color: var(--skyengpro-orange-hover) !important;
+}
+
+/* ─── Links ─── */
+a,
+.like-disabled-input a,
+.desk-sidebar .sidebar-menu a.active {
+  color: var(--skyengpro-orange);
+}
+
+a:hover {
+  color: var(--skyengpro-orange-hover);
+}
+
+/* ─── Sidebar active item ─── */
+.desk-sidebar .sidebar-menu .sidebar-item.active,
+.desk-sidebar .sidebar-menu a.active {
+  color: var(--skyengpro-orange) !important;
+  border-left: 3px solid var(--skyengpro-orange);
+}
+
+/* ─── Page head / breadcrumbs ─── */
+.page-head .page-title .title-text {
+  color: var(--skyengpro-gray-dark);
+}
+
+/* ─── Indicator / badges ─── */
+.indicator-pill.blue,
+.indicator.blue {
+  background-color: var(--skyengpro-orange) !important;
+}
+
+/* ─── Progress bars ─── */
+.progress-bar {
+  background-color: var(--skyengpro-orange) !important;
+}
+
+/* ─── Checkbox / toggle ─── */
+.frappe-control[data-fieldtype="Check"] .check-icon {
+  color: var(--skyengpro-orange);
+}
+
+/* ─── Login page ─── */
+.page-card .page-card-head {
+  background-color: var(--skyengpro-gray-dark);
+}
+
+.page-card .page-card-head .page-card-title {
+  color: #fff;
+}
+
+.login-content .btn-primary {
+  background-color: var(--skyengpro-orange) !important;
+  border-color: var(--skyengpro-orange) !important;
+}
+
+/* ─── Dark mode adjustments ─── */
+[data-theme="dark"] .navbar {
+  background-color: #1a1a1a !important;
+  border-bottom: 2px solid var(--skyengpro-orange) !important;
+}
+
+[data-theme="dark"] a {
+  color: #E8A44A;
+}
+
+[data-theme="dark"] .btn-primary {
+  background-color: var(--skyengpro-orange) !important;
+  border-color: var(--skyengpro-orange) !important;
+}
+
+/* ─── Frappe search highlight ─── */
+.awesomplete mark,
+.search-results .result.selected {
+  background-color: var(--skyengpro-orange-light);
+}
