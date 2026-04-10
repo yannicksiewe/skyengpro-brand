@@ -13,26 +13,64 @@
   --skyengpro-gray-light: #F5F5F5;
 }
 
-/* ─── Navbar ─── */
-.navbar {
+/* ─── Navbar (high specificity to beat Frappe defaults) ─── */
+header.navbar,
+body .navbar,
+#navbar.navbar,
+.frappe-control .navbar,
+nav.navbar {
   background-color: var(--skyengpro-gray-dark) !important;
   border-bottom: 2px solid var(--skyengpro-orange) !important;
 }
 
+/* ─── Navbar logo sizing ─── */
+.navbar .navbar-brand img,
+.navbar .app-logo,
+.navbar-brand img {
+  max-height: 24px !important;
+  height: 24px !important;
+  width: auto !important;
+  object-fit: contain;
+}
+
+/* Make logo visible on dark navbar */
 .navbar .navbar-brand img,
 .navbar .app-logo {
   filter: brightness(0) invert(1);
 }
 
+/* ─── Navbar text ─── */
+header.navbar .nav-link,
+header.navbar .navbar-nav .nav-link,
 .navbar .nav-link,
-.navbar .navbar-nav .nav-link,
-.navbar .search-bar .search-input {
+.navbar .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
+header.navbar .nav-link:hover,
 .navbar .nav-link:hover,
 .navbar .navbar-nav .nav-link:hover {
   color: var(--skyengpro-orange) !important;
+}
+
+/* Navbar search */
+.navbar .search-bar .search-input,
+header.navbar .search-bar input {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.navbar .search-bar .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Navbar icons (bell, help, avatar) */
+.navbar .navbar-nav .nav-link .es-icon,
+.navbar .navbar-nav .nav-link svg,
+header.navbar .notifications-icon {
+  color: rgba(255, 255, 255, 0.85) !important;
+  fill: rgba(255, 255, 255, 0.85) !important;
 }
 
 /* ─── Primary buttons ─── */
@@ -109,6 +147,7 @@ a:hover {
 }
 
 /* ─── Dark mode adjustments ─── */
+[data-theme="dark"] header.navbar,
 [data-theme="dark"] .navbar {
   background-color: #1a1a1a !important;
   border-bottom: 2px solid var(--skyengpro-orange) !important;
