@@ -49,7 +49,7 @@ def apply_website_settings():
 
 def apply_navbar_settings():
     ns = frappe.get_single("Navbar Settings")
-    ns.app_logo = "/files/SkyEngPro_Logo_Navbar.png"
+    ns.app_logo = "/files/SkyEngPro_Logo_White_Navbar.png"
     ns.save(ignore_permissions=True)
 
 
