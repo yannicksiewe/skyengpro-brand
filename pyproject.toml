@@ -1,0 +1,5 @@
+[project]
+name = "skyengpro_brand"
+version = "1.0.0"
+description = "SkyEngPro branding for ERPNext"
+requires-python = ">=3.10"

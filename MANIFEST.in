@@ -1,0 +1,19 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include skyengpro_brand *.css
+recursive-include skyengpro_brand *.csv
+recursive-include skyengpro_brand *.html
+recursive-include skyengpro_brand *.ico
+recursive-include skyengpro_brand *.js
+recursive-include skyengpro_brand *.json
+recursive-include skyengpro_brand *.md
+recursive-include skyengpro_brand *.png
+recursive-include skyengpro_brand *.jpg
+recursive-include skyengpro_brand *.svg
+recursive-include skyengpro_brand *.py
+recursive-include skyengpro_brand *.txt
+recursive-include skyengpro_brand *.xml
