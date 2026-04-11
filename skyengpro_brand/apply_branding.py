@@ -77,9 +77,11 @@ def _copy_assets():
 def _set_website_settings():
     ws = frappe.get_single("Website Settings")
     ws.app_name = APP_NAME
-    ws.brand_image = LOGO_BRAND
     ws.favicon = FAVICON
     ws.splash_image = LOGO_LOGIN
+    # brand_image exists in v15 but not v16
+    if hasattr(ws, "brand_image"):
+        ws.brand_image = LOGO_BRAND
     ws.save(ignore_permissions=True)
     print("  Website Settings updated")
 
