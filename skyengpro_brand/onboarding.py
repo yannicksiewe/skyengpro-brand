@@ -382,17 +382,29 @@ def onboard_employee(email, first_name, last_name, company,
 # ─────────────────────────────────────────────────────────────
 
 def _set_company_permission(email, company):
-    """Add a User Permission restricting the user to a company."""
-    if frappe.db.exists("User Permission", {
+    """Add a User Permission restricting the user to a company + set default."""
+    if not frappe.db.exists("User Permission", {
         "user": email, "allow": "Company", "for_value": company
     }):
-        return
+        frappe.get_doc({
+            "doctype": "User Permission",
+            "user": email,
+            "allow": "Company",
+            "for_value": company,
+            "apply_to_all_doctypes": 1,
+        }).insert(ignore_permissions=True)
 
-    frappe.get_doc({
-        "doctype": "User Permission",
-        "user": email,
-        "allow": "Company",
-        "for_value": company,
-        "apply_to_all_doctypes": 1,
-    }).insert(ignore_permissions=True)
+    # Set as the user's default company (avoids "Company is mandatory" errors)
+    if not frappe.db.exists("DefaultValue", {
+        "parent": email, "defkey": "company", "defvalue": company
+    }):
+        frappe.db.sql(
+            """INSERT INTO tabDefaultValue
+            (name, parent, parenttype, parentfield, defkey, defvalue,
+             creation, modified, modified_by, owner, docstatus, idx)
+            VALUES (%s, %s, 'User', 'defaults', 'company', %s,
+                    NOW(), NOW(), 'Administrator', 'Administrator', 0, 0)""",
+            (frappe.generate_hash(length=10), email, company)
+        )
+
     frappe.db.commit()
