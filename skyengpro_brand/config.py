@@ -275,7 +275,7 @@ COMPANY_DEFAULTS = {
     "cameroon": {
         "country": "Cameroon",
         "currency": "XAF",
-        "chart_of_accounts": "SYSCOHADA - Plan Comptable",
+        "chart_of_accounts": "Syscohada - Plan Comptable",
         "tax_rate": 19.25,
     },
     "ireland": {
