@@ -206,7 +206,7 @@ def add_employee(email, company, designation=None, department=None,
     if designation and not frappe.db.exists("Designation", designation):
         frappe.get_doc({
             "doctype": "Designation",
-            "designation": designation,
+            "designation_name": designation,
         }).insert(ignore_permissions=True)
 
     if not date_of_joining:
