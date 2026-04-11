@@ -238,6 +238,34 @@ def add_employee(email, company, designation=None, department=None,
     return emp
 
 
+def setup_company_letterhead(company_name, letterhead_image, company_logo=None):
+    """Create a Letter Head for a company and set it as the company default.
+
+    Args:
+        company_name: Company name (used as Letter Head name too)
+        letterhead_image: Path to letterhead image (e.g. "/files/ALI_Capital_Letterhead.png")
+        company_logo: Path to company logo. Optional.
+    """
+    if not frappe.db.exists("Letter Head", company_name):
+        frappe.get_doc({
+            "doctype": "Letter Head",
+            "letter_head_name": company_name,
+            "source": "Image",
+            "image": letterhead_image,
+            "is_default": 0,
+        }).insert(ignore_permissions=True)
+
+    frappe.db.set_value("Company", company_name, "default_letter_head", company_name)
+
+    if company_logo:
+        frappe.db.set_value("Company", company_name, "company_logo", company_logo)
+
+    frappe.db.commit()
+    frappe.logger("skyengpro").info(
+        "Letter Head set for '%s': %s", company_name, letterhead_image
+    )
+
+
 def remove_user(email):
     """Disable a user and remove their permissions.
 
