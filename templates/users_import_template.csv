@@ -1,0 +1,9 @@
+email,first_name,last_name,profile,company,password,designation,gender,date_of_birth,date_of_joining
+admin@alicapital.cm,Ali,Admin,Company Admin,ALI Capital,AliCapital@2026,CEO,Male,1985-03-15,2026-01-01
+finance@alicapital.cm,Ali,Finance,Company Finance,ALI Capital,AliCapital@2026,Finance Manager,Female,1990-07-22,2026-01-01
+employee@alicapital.cm,Ali,Employee,Employee Self Service Profile,ALI Capital,AliCapital@2026,Analyst,Male,1995-11-08,2026-03-01
+admin@mccapital.cm,MC,Admin,Company Admin,MC Capital,McCapital@2026,CEO,Male,1982-01-10,2026-01-01
+finance@mccapital.cm,MC,Finance,Company Finance,MC Capital,McCapital@2026,Finance Manager,Female,1988-09-30,2026-01-01
+employee@mccapital.cm,MC,Employee,Employee Self Service Profile,MC Capital,McCapital@2026,Analyst,Male,1993-05-17,2026-02-15
+lausonobase.odine@adorsys.com,Lausonobase,Odine,Partner HR Manager,adorsys,Adorsys@2026,HR Manager,Male,1990-01-01,2026-01-01
+ysi@adorsys.com,Yannick,Siewe,Employee Self Service Profile,adorsys,Adorsys@2026,Software Engineer,Male,1990-01-01,2026-01-01
