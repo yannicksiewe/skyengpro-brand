@@ -1,5 +1,3 @@
 company_name,abbreviation,country_template,parent_company,letterhead_image,company_logo
 skyengpro Sarl,SEP,cameroon,,/files/SkyEngPro_Logo_Tagline_800px.png,/files/SkyEngPro_Logo_Primary_400px.png
 adorsys,ADO,ireland,skyengpro Sarl,,
-ALI Capital,ALI,cameroon,,/files/ALI_Capital_Letterhead.png,/files/ALI_Capital_Logo.png
-MC Capital,MCC,cameroon,,/files/MC_Capital_Letterhead.png,/files/MC_Capital_Logo.png

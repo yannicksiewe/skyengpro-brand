@@ -70,7 +70,7 @@ def copy_brand_assets():
 
 def apply_website_settings():
     ws = frappe.get_single("Website Settings")
-    ws.app_name = "SkyEngPro"
+    ws.app_name = "SEP ERP"
     ws.brand_image = "/files/SkyEngPro_Logo_Primary_400px.png"
     ws.favicon = "/files/SkyEngPro_Icon_32px.png"
     ws.splash_image = "/files/SkyEngPro_Logo_Tagline_800px.png"
