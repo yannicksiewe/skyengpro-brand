@@ -9,5 +9,10 @@ required_apps = ["frappe"]
 # Inject brand CSS into every desk page (safe — pure CSS, no JS hooks)
 app_include_css = "/assets/skyengpro_brand/css/skyengpro.css"
 
+# Intercept Script Report execution to inject company filter (prevents data leaks)
+override_whitelisted_methods = {
+    "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run"
+}
+
 after_install = "skyengpro_brand.install.after_install"
 after_migrate = "skyengpro_brand.install.after_install"

@@ -198,11 +198,13 @@ PROFILES = {
         "description": "Basic employee self-service (used by 1E, 2-E, 3B)",
         "roles": [
             "Employee",
+            "Projects User",
         ],
         "allowed_modules": BASE_MODULES + [
             "HR",
             "Frappe HR",
             "Payroll",
+            "Projects",
         ],
         "company_scope": "own",
     },
