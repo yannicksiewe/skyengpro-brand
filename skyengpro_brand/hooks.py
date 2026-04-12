@@ -18,6 +18,9 @@ override_whitelisted_methods = {
 has_permission = {
     "User": "skyengpro_brand.user_permission.user_has_permission"
 }
+permission_query_conditions = {
+    "User": "skyengpro_brand.user_permission.user_query_conditions"
+}
 
 after_install = "skyengpro_brand.install.after_install"
 after_migrate = "skyengpro_brand.install.after_install"

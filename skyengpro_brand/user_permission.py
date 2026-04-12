@@ -43,6 +43,36 @@ def user_has_permission(doc, ptype=None, user=None):
     return True
 
 
+def user_query_conditions(user=None):
+    """SQL WHERE clause to filter User list by company.
+
+    Non-admins only see users who share at least one company.
+    Registered via hooks.py permission_query_conditions.
+    """
+    if not user:
+        user = frappe.session.user
+
+    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+        return ""
+
+    # Get current user's companies
+    companies = get_user_companies(user)
+    if not companies:
+        # No company restriction = sees all (shouldn't happen for non-admins)
+        return ""
+
+    # Find users who have at least one company in common
+    company_list = ", ".join("'{}'".format(c.replace("'", "\\'")) for c in companies)
+
+    return """
+        `tabUser`.name IN (
+            SELECT user FROM `tabUser Permission`
+            WHERE allow = 'Company' AND for_value IN ({companies})
+        )
+        OR `tabUser`.name = '{user}'
+    """.format(companies=company_list, user=user.replace("'", "\\'"))
+
+
 def get_user_companies(email):
     """Get set of companies a user has access to."""
     perms = frappe.get_all(
