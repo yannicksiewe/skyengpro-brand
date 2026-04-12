@@ -14,5 +14,10 @@ override_whitelisted_methods = {
     "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run"
 }
 
+# Restrict User list to same-company users only (non-admins)
+has_permission = {
+    "User": "skyengpro_brand.user_permission.user_has_permission"
+}
+
 after_install = "skyengpro_brand.install.after_install"
 after_migrate = "skyengpro_brand.install.after_install"
