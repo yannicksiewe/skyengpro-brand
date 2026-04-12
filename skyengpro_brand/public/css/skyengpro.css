@@ -26,11 +26,19 @@ nav.navbar {
 /* ─── Navbar logo sizing ─── */
 .navbar .navbar-brand img,
 .navbar .app-logo,
-.navbar-brand img {
-  max-height: 18px !important;
-  height: 18px !important;
+.navbar-brand img,
+#brand-logo {
+  max-height: 16px !important;
+  height: 16px !important;
   width: auto !important;
   object-fit: contain;
+}
+
+/* Invert logo to white ONLY in the dark navbar (not on login page) */
+header.navbar .navbar-brand img,
+header.navbar .app-logo,
+header.navbar #brand-logo {
+  filter: brightness(0) invert(1);
 }
 
 /* ─── Navbar text ─── */
