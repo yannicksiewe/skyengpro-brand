@@ -1,3 +1,2 @@
 company_name,abbreviation,country_template,parent_company,letterhead_image,company_logo
-skyengpro Sarl,SEP,cameroon,,/files/SkyEngPro_Logo_Tagline_800px.png,/files/SkyEngPro_Logo_Primary_400px.png
-adorsys,ADO,ireland,skyengpro Sarl,,
+adorsys,ADO,ireland,sky engineering professional,,
