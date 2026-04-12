@@ -11,10 +11,10 @@ app_include_css = "/assets/skyengpro_brand/css/skyengpro.css"
 
 # Intercept Script Report execution to inject company filter (prevents data leaks)
 override_whitelisted_methods = {
-    "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run"
+    "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run",
 }
 
-# Restrict User list to same-company users only (non-admins)
+# Restrict User list + single doc to same-company users only
 has_permission = {
     "User": "skyengpro_brand.user_permission.user_has_permission"
 }
