@@ -9,6 +9,18 @@ required_apps = ["frappe"]
 # Inject brand CSS into every desk page (safe — pure CSS, no JS hooks)
 app_include_css = "/assets/skyengpro_brand/css/skyengpro.css"
 
+# DocType-scoped client scripts. Frappe loads these on the matching form.
+doctype_js = {
+    "Project": "public/js/project_form.js",
+}
+
+# Extend the Connections panels of Project and Employee with a Capacity
+# Planning section listing related Project Allocation rows.
+override_doctype_dashboards = {
+    "Project": "skyengpro_brand.capacity_planning.dashboard.project_dashboard.get_data",
+    "Employee": "skyengpro_brand.capacity_planning.dashboard.employee_dashboard.get_data",
+}
+
 # Intercept Script Report execution to inject company filter (prevents data leaks)
 override_whitelisted_methods = {
     "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run",
