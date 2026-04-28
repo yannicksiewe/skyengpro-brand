@@ -183,6 +183,20 @@ def letter_head_has_perm(doc, ptype="read", user=None):
     return _scope_has_perm("company", True, doc, user)
 
 
+# Company doctype is special: the document's primary key (`name`) IS the
+# company name, so the scope field is `name` instead of `company`. Without
+# this filter, every company-Link autocomplete (Payment Reconciliation,
+# Sales Invoice, etc.) shows all 5 companies.
+def company_query(user=None):
+    return _scope_query("Company", "name", False, user)
+
+def company_has_perm(doc, ptype="read", user=None):
+    company = get_user_company(user)
+    if not company:
+        return True
+    return doc.name == company if hasattr(doc, "name") else doc.get("name") == company
+
+
 # ─────────────────────────────────────────────────────────────
 # before_insert auto-tagger
 #

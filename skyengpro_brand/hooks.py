@@ -47,6 +47,7 @@ override_whitelisted_methods = {
 # (strict for Customer/Supplier/Item, allow-as-global for Letter Head).
 has_permission = {
     "User":        "skyengpro_brand.user_permission.user_has_permission",
+    "Company":     "skyengpro_brand.tenant_scope.company_has_perm",
     "Customer":    "skyengpro_brand.tenant_scope.customer_has_perm",
     "Supplier":    "skyengpro_brand.tenant_scope.supplier_has_perm",
     "Item":        "skyengpro_brand.tenant_scope.item_has_perm",
@@ -54,6 +55,7 @@ has_permission = {
 }
 permission_query_conditions = {
     "User":        "skyengpro_brand.user_permission.user_query_conditions",
+    "Company":     "skyengpro_brand.tenant_scope.company_query",
     "Customer":    "skyengpro_brand.tenant_scope.customer_query",
     "Supplier":    "skyengpro_brand.tenant_scope.supplier_query",
     "Item":        "skyengpro_brand.tenant_scope.item_query",
