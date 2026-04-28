@@ -206,9 +206,15 @@ def apply_website_settings():
     Note: the URLs below point at the new `brand/skyengpro/` folder layout.
     Per-tenant logo swap on the desk happens client-side via brand_loader.js;
     Website Settings is the *fallback* for guest pages (login, portal).
+
+    The display app name is sourced from `apply_branding.APP_NAME` so there's
+    one place to change it; previously this function hardcoded "SEP ERP" and
+    overwrote any change made there on every `bench migrate`.
     """
+    from skyengpro_brand.apply_branding import APP_NAME
+
     ws = frappe.get_single("Website Settings")
-    ws.app_name = "SEP ERP"
+    ws.app_name = APP_NAME
     ws.brand_image = "/assets/skyengpro_brand/brand/skyengpro/logo_horizontal_color_400px.png"
     ws.favicon     = "/assets/skyengpro_brand/brand/skyengpro/icon_mark_32px.png"
     ws.splash_image = "/assets/skyengpro_brand/brand/skyengpro/logo_tagline_color_800px.png"
@@ -230,8 +236,13 @@ def apply_navbar_settings():
 
 
 def apply_system_settings():
+    """Set System Settings.app_name from apply_branding.APP_NAME (single
+    source of truth). System Settings.app_name controls the browser tab
+    title and a few other places."""
+    from skyengpro_brand.apply_branding import APP_NAME
+
     ss = frappe.get_single("System Settings")
-    ss.app_name = "SkyEngPro"
+    ss.app_name = APP_NAME
     ss.save(ignore_permissions=True)
 
 
