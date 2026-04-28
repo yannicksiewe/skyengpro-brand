@@ -54,20 +54,30 @@ def get_user_company(user: str | None = None) -> str | None:
     Mirrors theme._resolve_brand_slug — same priority order so branding and
     data scope agree. Returns None on the bypass path.
 
-    Bypass is intentionally limited to **Administrator** and **Guest**:
-      - Administrator is the root account; cross-tenant admin work happens
-        as that user.
-      - Guest is unauthenticated; permission_query_conditions is moot.
+    Bypass paths:
+      - `Administrator` (root user) and `Guest` (unauthenticated) are
+        always bypassed.
+      - Any user with the **System Manager** role is bypassed. System
+        Manager has full doctype access in stock Frappe anyway, so
+        scoping their list views adds friction without any security
+        gain — they could just toggle off the User Permission and see
+        everything regardless. The platform admin (a normal user with
+        System Manager) typically needs cross-tenant visibility to
+        manage all tenants from one account.
 
-    System Manager users are NOT bypassed — they still resolve to their
-    Employee.company / User Permission tenant. If they need cross-tenant
-    access, they should log in as Administrator. This avoids the trap
-    where someone with System Manager role logs in to a tenant context
-    and silently sees every other tenant's records.
+    Anyone else resolves to their tenant via Employee → User Permission
+    → user/global default chain.
     """
     user = user or frappe.session.user
     if not user or user in ("Guest", "Administrator"):
         return None
+
+    # System Manager bypass — platform admins need cross-tenant view.
+    try:
+        if "System Manager" in (frappe.get_roles(user) or []):
+            return None
+    except Exception:
+        pass
 
     # 1) Employee linkage (most specific signal for HR-managed users)
     try:

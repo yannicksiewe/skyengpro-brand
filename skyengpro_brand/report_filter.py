@@ -39,9 +39,10 @@ def run(report_name, filters=None, user=None, ignore_prepared_report=False,
         filters = json.loads(filters)
     filters = filters or {}
 
-    # Bypass for Administrator. Note: System Manager users go through the
-    # filter — that's intentional, mirrors tenant_scope.get_user_company.
-    if frappe.session.user == "Administrator":
+    # Bypass for Administrator + System Manager — same policy as
+    # tenant_scope.get_user_company. Platform admins need cross-tenant
+    # report access to manage the site.
+    if frappe.session.user == "Administrator" or "System Manager" in (frappe.get_roles() or []):
         return original_run(
             report_name, filters=filters, user=user,
             ignore_prepared_report=ignore_prepared_report,
