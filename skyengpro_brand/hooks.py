@@ -40,12 +40,34 @@ override_whitelisted_methods = {
     "frappe.desk.query_report.run": "skyengpro_brand.report_filter.run",
 }
 
-# Restrict User list + single doc to same-company users only
+# Per-tenant scoping: User list filter + same scope applied to the four
+# shared masters that ERPNext leaves globally visible by default
+# (Customer, Supplier, Item, Letter Head). Resolver lives in
+# tenant_scope.get_user_company; behaviour for NULL company is per-doctype
+# (strict for Customer/Supplier/Item, allow-as-global for Letter Head).
 has_permission = {
-    "User": "skyengpro_brand.user_permission.user_has_permission"
+    "User":        "skyengpro_brand.user_permission.user_has_permission",
+    "Customer":    "skyengpro_brand.tenant_scope.customer_has_perm",
+    "Supplier":    "skyengpro_brand.tenant_scope.supplier_has_perm",
+    "Item":        "skyengpro_brand.tenant_scope.item_has_perm",
+    "Letter Head": "skyengpro_brand.tenant_scope.letter_head_has_perm",
 }
 permission_query_conditions = {
-    "User": "skyengpro_brand.user_permission.user_query_conditions"
+    "User":        "skyengpro_brand.user_permission.user_query_conditions",
+    "Customer":    "skyengpro_brand.tenant_scope.customer_query",
+    "Supplier":    "skyengpro_brand.tenant_scope.supplier_query",
+    "Item":        "skyengpro_brand.tenant_scope.item_query",
+    "Letter Head": "skyengpro_brand.tenant_scope.letter_head_query",
+}
+
+# Auto-tag the company on insert so new Customer/Supplier/Item records
+# always carry the creator's tenant. Letter Head is intentionally not
+# auto-tagged — leaving its company empty marks it as shared across
+# tenants (matches the allow-NULL behaviour of letter_head_query).
+doc_events = {
+    "Customer": {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    "Supplier": {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    "Item":     {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
 }
 
 after_install = "skyengpro_brand.install.after_install"

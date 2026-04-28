@@ -52,8 +52,127 @@ def after_install():
     #    user edits in the UI are preserved across migrations).
     ensure_overview_dashboard()
 
+    # 7. Multi-tenant scope: ensure custom `company` field exists on the
+    #    shared masters and backfill NULL rows so existing data is tagged
+    #    to a tenant. Wired into permission_query_conditions via hooks.py.
+    ensure_tenant_company_fields()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
+
+
+# ─────────────────────────────────────────────────────────────
+# Multi-tenant scope: company custom field + backfill
+# ─────────────────────────────────────────────────────────────
+
+# Maps a Company name to a regex of letterhead names that belong to it.
+# Used during the one-shot Letter Head backfill — letterheads created
+# AFTER this install are tagged through the UI / before_insert hook.
+_LETTERHEAD_NAME_TO_COMPANY = {
+    "MC Capital":                  r"^MC Capital",
+    "ALI Capital":                 r"^ALI Capital",
+    "adorsys":                     r"^adorsys",
+    "Clemios Sarl":                r"^Clemios",
+    # Anything else stays NULL (treated as "shared/global" — the
+    # Letter Head scope intentionally allows that).
+}
+
+# Default tenant for legacy rows that have no other clue. Matches the
+# COMPANY_TO_BRAND default from theme.py.
+_BACKFILL_DEFAULT_COMPANY = "Sky Engineering Professional"
+
+
+def ensure_tenant_company_fields():
+    """Create the Custom Field `company` on Customer / Supplier / Item /
+    Letter Head, and backfill existing rows where the field is NULL.
+
+    Idempotent — re-running this on every migrate is safe and cheap.
+    """
+    from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+
+    targets = ["Customer", "Supplier", "Item", "Letter Head"]
+    for dt in targets:
+        df = {
+            "fieldname": "company",
+            "label": "Company",
+            "fieldtype": "Link",
+            "options": "Company",
+            # Place near the top so it's visible at-a-glance on the form.
+            "insert_after": "naming_series" if dt != "Letter Head" else None,
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "description": "Tenant-scoping field — controls who can see and edit this record across multiple Companies on the same site.",
+        }
+        # `insert_after` for Letter Head: it doesn't have naming_series,
+        # so let Frappe place it at the bottom of the form by leaving it None.
+        if df.get("insert_after") is None:
+            df.pop("insert_after")
+
+        try:
+            create_custom_field(dt, df)
+            frappe.logger("skyengpro").info("Custom Field 'company' ensured on %s", dt)
+        except Exception:
+            frappe.logger("skyengpro").exception("Failed to add 'company' Custom Field on %s", dt)
+
+    # Backfill NULL company values so existing data shows up under the
+    # right tenant after the permission filter is wired up.
+    _backfill_letter_head_company()
+    _backfill_default_company(["Customer", "Supplier", "Item"])
+
+    # Make sure the company column is indexed — list views filter by it
+    # on every query, so a missing index turns into a table scan.
+    for dt in targets:
+        _ensure_index(dt, "company")
+
+
+def _backfill_letter_head_company():
+    """Tag existing Letter Heads by name pattern. Anything not matching a
+    pattern stays NULL = shared across all tenants."""
+    import re
+    rows = frappe.db.get_all(
+        "Letter Head",
+        filters={"company": ["in", ["", None]]},
+        fields=["name"],
+    )
+    for r in rows:
+        for company, pattern in _LETTERHEAD_NAME_TO_COMPANY.items():
+            if re.match(pattern, r.name, flags=re.IGNORECASE):
+                frappe.db.set_value("Letter Head", r.name, "company", company,
+                                    update_modified=False)
+                break
+
+
+def _backfill_default_company(doctypes: list):
+    """For Customer / Supplier / Item: any row with NULL company gets
+    tagged to the default tenant. Without this, the strict scope filter
+    would hide every legacy row immediately after rollout.
+
+    Skip if the default Company doesn't exist on this site (fresh install
+    case — there's nothing to backfill yet either way).
+    """
+    if not frappe.db.exists("Company", _BACKFILL_DEFAULT_COMPANY):
+        return
+    for dt in doctypes:
+        try:
+            frappe.db.sql(
+                f"UPDATE `tab{dt}` SET company=%s "
+                f"WHERE company IS NULL OR company=''",
+                (_BACKFILL_DEFAULT_COMPANY,),
+            )
+        except Exception:
+            frappe.logger("skyengpro").exception("Backfill failed for %s", dt)
+
+
+def _ensure_index(doctype: str, fieldname: str):
+    """Best-effort: add a non-unique index on (fieldname). Frappe stores
+    this in the database, not in DocType meta — running it idempotently
+    is fine because MySQL/MariaDB ignores CREATE INDEX IF NOT EXISTS
+    via the existence check below."""
+    try:
+        frappe.db.add_index(doctype, [fieldname])
+    except Exception:
+        # Index already exists, or we don't have ALTER privilege.
+        pass
 
 
 def ensure_capacity_workspace_shortcuts():
