@@ -32,7 +32,7 @@ LOGO_LOGIN = "/files/SkyEngPro_Logo_Primary_400px.png"    # login page splash
 LOGO_NAVBAR = "/files/SkyEngPro_Logo_Primary_400px.png"   # navbar top-left
 LOGO_BRAND = "/files/SkyEngPro_Logo_Primary_400px.png"    # website brand
 FAVICON = "/files/SkyEngPro_Icon_32px.png"                # browser tab icon
-APP_NAME = "SEP ERP"                                       # browser tab title
+APP_NAME = "MY ERP"                                      # browser tab title
 
 # All brand files to copy from app → site
 BRAND_FILES = [
