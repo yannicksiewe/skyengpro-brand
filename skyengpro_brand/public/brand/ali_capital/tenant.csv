@@ -1,0 +1,18 @@
+field,value,notes
+# ──────────────────────────────────────────────
+# Tenant config for ALI Capital (independent standalone).
+# ──────────────────────────────────────────────
+slug,ali_capital,
+company_name,ALI Capital,
+abbr,ALI,
+country,Cameroon,
+default_currency,XAF,
+chart_of_accounts,,
+is_group,0,
+parent_company,,Standalone — NOT a child of SkyEngPro
+employee_naming,ALI-EMP-.#####,
+fiscal_year_start,01-01,
+fiscal_year_end,12-31,
+holiday_list_name,Cameroon Public Holidays,
+default_letterhead,,
+brand_slug,ali_capital,

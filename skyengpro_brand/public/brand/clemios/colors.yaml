@@ -1,0 +1,11 @@
+# Clemios Sarl color tokens.
+# Sourced from clemios.com (April 2026): deep-navy site bg with cyan/blue
+# logomark accent. Update if Clemios redesigns.
+
+primary: "#02B8E4"          # cyan accent from logomark — used for CTAs
+primary_hover: "#0299BE"    # darker cyan for hover state
+primary_light: "#D0F1FA"    # very light cyan for highlights / subtle backgrounds
+navbar_bg: "#0F1830"        # deep navy matching clemios.com header
+navbar_fg: "#FFFFFF"        # white text on navy navbar
+text_color: "#1F2937"       # body text
+text_muted: "#6B7280"       # secondary text

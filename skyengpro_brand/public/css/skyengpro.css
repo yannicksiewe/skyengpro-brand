@@ -1,171 +1,175 @@
 /*
- * SkyEngPro brand theme for ERPNext / Frappe v15
- * Colors: orange #CC7A1A, dark gray #4A4A4A, light gray #F5F5F5
- * Safe: pure CSS override, no JS hooks, no DocType dependencies
+ * SkyEngPro tenant theme for ERPNext / Frappe v15
+ *
+ * Strategy: redefine Frappe's CSS variables at :root so the existing cascade
+ * propagates the brand to buttons, indicators, focus rings, etc. — without
+ * scattering !important across the file.
+ *
+ * The brand_loader.js client script writes per-tenant CSS variables here
+ * (see frappe.boot.brand). These then feed Frappe's variables below. Result:
+ * one CSS file serves all 5 tenants; tenant-specific values come from the
+ * server-side boot_session hook + per-tenant colors.yaml.
+ *
+ * Default values below match the SkyEngPro palette so this file works even
+ * if the boot hook hasn't run yet (login page, guest pages).
  */
 
 :root {
-  --skyengpro-orange: #CC7A1A;
-  --skyengpro-orange-hover: #B56A12;
-  --skyengpro-orange-light: #F5E6D0;
-  --skyengpro-gray-dark: #4A4A4A;
-  --skyengpro-gray-medium: #6B6B6B;
-  --skyengpro-gray-light: #F5F5F5;
+  /* ── Tenant tokens (defaults; overridden per-tenant by brand_loader.js) ── */
+  --skyengpro-primary:        #CC7A1A;
+  --skyengpro-primary-hover:  #B56A12;   /* WCAG AA on white (4.96:1) — used as default link color */
+  --skyengpro-primary-light:  #F5E6D0;
+  --skyengpro-navbar-bg:      #2C2C2C;
+  --skyengpro-navbar-fg:      #FFFFFF;
+
+  /* ── Map onto Frappe's variables (no !important needed) ── */
+  --primary:           var(--skyengpro-primary);
+  --primary-color:     var(--skyengpro-primary);
+  --btn-primary-bg:    var(--skyengpro-primary);
+  --btn-primary-color: #FFFFFF;
+  --navbar-bg:         var(--skyengpro-navbar-bg);
+  --navbar-color:      var(--skyengpro-navbar-fg);
 }
 
-/* ─── Navbar (high specificity to beat Frappe defaults) ─── */
-header.navbar,
-body .navbar,
-#navbar.navbar,
-.frappe-control .navbar,
-nav.navbar {
-  background-color: var(--skyengpro-gray-dark) !important;
-  border-bottom: 2px solid var(--skyengpro-orange) !important;
+/* Dark theme: tenant tokens stay; Frappe-side neutrals shift. */
+[data-theme="dark"] {
+  --skyengpro-navbar-bg: #1A1A1A;
 }
 
-/* ─── Navbar logo sizing ─── */
-.navbar .navbar-brand img,
-.navbar .app-logo,
-.navbar-brand img,
-#brand-logo {
-  max-height: 16px !important;
-  height: 16px !important;
-  width: auto !important;
+/* ──────────────────────────────────────────────────────────────────
+ *  Navbar
+ * ────────────────────────────────────────────────────────────────── */
+
+/* Frappe v15 markup: <header class="navbar navbar-expand"> */
+header.navbar {
+  background-color: var(--skyengpro-navbar-bg);
+  /* No 2px brand stripe — collides with the page-head divider below it. */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Logo: let it render at its natural size (the boot loader picks the right asset).
+ * The old `max-height: 16px` was the root cause of "logo not showing well". */
+header.navbar .navbar-brand img {
+  max-height: 32px;
+  width: auto;
   object-fit: contain;
 }
 
-/* Invert logo to white ONLY in the dark navbar (not on login page) */
-header.navbar .navbar-brand img,
-header.navbar .app-logo,
-header.navbar #brand-logo {
-  filter: brightness(0) invert(1);
-}
-
-/* ─── Navbar text ─── */
+/* Navbar text + icons */
 header.navbar .nav-link,
-header.navbar .navbar-nav .nav-link,
-.navbar .nav-link,
-.navbar .navbar-nav .nav-link {
-  color: rgba(255, 255, 255, 0.85) !important;
+header.navbar .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 header.navbar .nav-link:hover,
-.navbar .nav-link:hover,
-.navbar .navbar-nav .nav-link:hover {
-  color: var(--skyengpro-orange) !important;
+header.navbar .navbar-nav .nav-link:hover {
+  color: var(--skyengpro-primary);
 }
 
-/* Navbar search */
-.navbar .search-bar .search-input,
+header.navbar .navbar-nav .nav-link svg,
+header.navbar .navbar-nav .nav-link .es-icon {
+  color: rgba(255, 255, 255, 0.85);
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+/* Search input in navbar */
+header.navbar .search-bar .search-input,
 header.navbar .search-bar input {
-  color: rgba(255, 255, 255, 0.85) !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.20);
 }
 
-.navbar .search-bar .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.5) !important;
+header.navbar .search-bar .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
 }
 
-/* Navbar icons (bell, help, avatar) */
-.navbar .navbar-nav .nav-link .es-icon,
-.navbar .navbar-nav .nav-link svg,
-header.navbar .notifications-icon {
-  color: rgba(255, 255, 255, 0.85) !important;
-  fill: rgba(255, 255, 255, 0.85) !important;
-}
+/* ──────────────────────────────────────────────────────────────────
+ *  Buttons — only the primary CTA, no blanket override
+ * ────────────────────────────────────────────────────────────────── */
 
-/* ─── Primary buttons ─── */
-.btn-primary,
-.btn-primary-dark {
-  background-color: var(--skyengpro-orange) !important;
-  border-color: var(--skyengpro-orange) !important;
-  color: #fff !important;
+.btn-primary {
+  background-color: var(--skyengpro-primary);
+  border-color: var(--skyengpro-primary);
+  color: #FFFFFF;
 }
 
 .btn-primary:hover,
-.btn-primary:focus,
-.btn-primary-dark:hover {
-  background-color: var(--skyengpro-orange-hover) !important;
-  border-color: var(--skyengpro-orange-hover) !important;
+.btn-primary:focus {
+  background-color: var(--skyengpro-primary-hover);
+  border-color: var(--skyengpro-primary-hover);
+  color: #FFFFFF;
 }
 
 .btn-primary:active,
 .btn-primary.active {
-  background-color: var(--skyengpro-orange-hover) !important;
+  background-color: var(--skyengpro-primary-hover);
 }
 
-/* ─── Links ─── */
+/* Leave .btn-success/.btn-warning/.btn-danger alone — those carry semantic meaning. */
+
+/* ──────────────────────────────────────────────────────────────────
+ *  Links
+ *  Use the darker hover shade as default — passes WCAG AA (4.96:1 on white).
+ *  The lighter primary still appears on hover for visual feedback.
+ * ────────────────────────────────────────────────────────────────── */
+
 a,
-.like-disabled-input a,
-.desk-sidebar .sidebar-menu a.active {
-  color: var(--skyengpro-orange);
+.like-disabled-input a {
+  color: var(--skyengpro-primary-hover);
 }
 
 a:hover {
-  color: var(--skyengpro-orange-hover);
+  color: var(--skyengpro-primary);
 }
 
-/* ─── Sidebar active item ─── */
+/* ──────────────────────────────────────────────────────────────────
+ *  Sidebar active state
+ * ────────────────────────────────────────────────────────────────── */
+
+.standard-sidebar-item.selected,
+.layout-side-section .standard-sidebar-item.selected,
 .desk-sidebar .sidebar-menu .sidebar-item.active,
 .desk-sidebar .sidebar-menu a.active {
-  color: var(--skyengpro-orange) !important;
-  border-left: 3px solid var(--skyengpro-orange);
+  color: var(--skyengpro-primary-hover);
+  border-left-color: var(--skyengpro-primary);
 }
 
-/* ─── Page head / breadcrumbs ─── */
-.page-head .page-title .title-text {
-  color: var(--skyengpro-gray-dark);
-}
+/* ──────────────────────────────────────────────────────────────────
+ *  Form indicators / progress
+ * ────────────────────────────────────────────────────────────────── */
 
-/* ─── Indicator / badges ─── */
-.indicator-pill.blue,
-.indicator.blue {
-  background-color: var(--skyengpro-orange) !important;
-}
-
-/* ─── Progress bars ─── */
 .progress-bar {
-  background-color: var(--skyengpro-orange) !important;
+  background-color: var(--skyengpro-primary);
 }
 
-/* ─── Checkbox / toggle ─── */
 .frappe-control[data-fieldtype="Check"] .check-icon {
-  color: var(--skyengpro-orange);
+  color: var(--skyengpro-primary);
 }
 
-/* ─── Login page ─── */
+/* ──────────────────────────────────────────────────────────────────
+ *  Awesomplete (search dropdown highlight)
+ * ────────────────────────────────────────────────────────────────── */
+
+.awesomplete mark,
+.search-results .result.selected {
+  background-color: var(--skyengpro-primary-light);
+  color: inherit;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ *  Login page
+ * ────────────────────────────────────────────────────────────────── */
+
 .page-card .page-card-head {
-  background-color: var(--skyengpro-gray-dark);
+  background-color: var(--skyengpro-navbar-bg);
 }
 
 .page-card .page-card-head .page-card-title {
-  color: #fff;
+  color: #FFFFFF;
 }
 
 .login-content .btn-primary {
-  background-color: var(--skyengpro-orange) !important;
-  border-color: var(--skyengpro-orange) !important;
-}
-
-/* ─── Dark mode adjustments ─── */
-[data-theme="dark"] header.navbar,
-[data-theme="dark"] .navbar {
-  background-color: #1a1a1a !important;
-  border-bottom: 2px solid var(--skyengpro-orange) !important;
-}
-
-[data-theme="dark"] a {
-  color: #E8A44A;
-}
-
-[data-theme="dark"] .btn-primary {
-  background-color: var(--skyengpro-orange) !important;
-  border-color: var(--skyengpro-orange) !important;
-}
-
-/* ─── Frappe search highlight ─── */
-.awesomplete mark,
-.search-results .result.selected {
-  background-color: var(--skyengpro-orange-light);
+  background-color: var(--skyengpro-primary);
+  border-color: var(--skyengpro-primary);
 }

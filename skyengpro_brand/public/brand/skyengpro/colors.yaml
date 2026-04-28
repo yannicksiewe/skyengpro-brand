@@ -1,0 +1,11 @@
+# SkyEngPro Sarl color tokens.
+# These feed the boot_session hook → Frappe CSS variables on the desk.
+# Edit here, redeploy, no code change needed.
+
+primary: "#CC7A1A"          # SkyEngPro orange — used for primary CTAs only
+primary_hover: "#B56A12"    # accessible default link color (4.96:1 on white = WCAG AA pass)
+primary_light: "#F5E6D0"    # search highlights, subtle backgrounds
+navbar_bg: "#2C2C2C"        # nearly-black navbar (was #4A4A4A — too light)
+navbar_fg: "#FFFFFF"        # white text on navbar
+text_color: "#1F2937"       # body text
+text_muted: "#6B7280"       # secondary text

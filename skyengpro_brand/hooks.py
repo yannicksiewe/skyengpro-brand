@@ -6,8 +6,22 @@ app_email = "contact@skyengpro.com"
 app_license = "MIT"
 required_apps = ["frappe"]
 
-# Inject brand CSS into every desk page (safe — pure CSS, no JS hooks)
+# Inject brand CSS on desk pages (logged-in users)
 app_include_css = "/assets/skyengpro_brand/css/skyengpro.css"
+# Same brand CSS on web pages (login, portal, signup) — without this the
+# login page falls back to Frappe defaults and the SKYENGPRO mark becomes
+# invisible (white-on-white).
+web_include_css = "/assets/skyengpro_brand/css/skyengpro.css"
+
+# Brand loader: reads frappe.boot.brand and applies per-tenant logo + colors
+# at runtime. Loaded on both desk and web so login carries SkyEngPro brand
+# even for guests (the loader gracefully falls back when frappe.boot.brand
+# is absent).
+app_include_js = "/assets/skyengpro_brand/js/brand_loader.js"
+web_include_js = "/assets/skyengpro_brand/js/brand_loader.js"
+
+# Resolve the user's tenant brand at boot and stuff it into bootinfo.brand
+boot_session = "skyengpro_brand.theme.boot_session"
 
 # DocType-scoped client scripts. Frappe loads these on the matching form.
 doctype_js = {

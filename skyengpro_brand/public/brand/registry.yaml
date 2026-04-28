@@ -1,0 +1,240 @@
+# SkyEngPro brand asset register
+# Single source of truth for every brand asset shipped in this app.
+# Keep alphabetical by id. Bump version on any visual change.
+#
+# Schema:
+#   id            stable identifier — referenced from theme.py, never reused
+#   filename      relative to skyengpro_brand/public/
+#   entity        slug: skyengpro | ali_capital | mc_capital | adorsys
+#   type          logo | icon | letterhead | favicon
+#   variant       horizontal | tagline | mark | white | color
+#   size          intrinsic size (px) of the source asset
+#   version       bump on visual change; old asset goes to archive/
+#   owner         person responsible for this asset
+#   source        path or URL of the editable source (.ai / .fig / Figma link)
+#   license       proprietary | cc-by | etc
+#   where_used    free-form list of consumers
+#   status        active | deprecated | placeholder
+
+assets:
+  # ──────────────────────────────────────────
+  # SkyEngPro Sarl (platform owner; also used by adorsys Ireland by EoR design)
+  # ──────────────────────────────────────────
+  - id: skyengpro_logo_horizontal_color
+    filename: brand/skyengpro/logo_horizontal_color_400px.png
+    entity: skyengpro
+    type: logo
+    variant: horizontal-color
+    size: 400x68
+    version: "1.0"
+    owner: yannicksiewe
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar, login, letterhead]
+    status: active
+
+  - id: skyengpro_logo_horizontal_white
+    filename: brand/skyengpro/logo_horizontal_white_800px.png
+    entity: skyengpro
+    type: logo
+    variant: horizontal-white
+    size: 800x137
+    version: "1.0"
+    owner: yannicksiewe
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar-dark]
+    status: active
+
+  - id: skyengpro_logo_tagline_color
+    filename: brand/skyengpro/logo_tagline_color_800px.png
+    entity: skyengpro
+    type: logo
+    variant: tagline-color
+    size: 800x241
+    version: "1.0"
+    owner: yannicksiewe
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [splash, marketing]
+    status: active
+
+  - id: skyengpro_icon_mark_32
+    filename: brand/skyengpro/icon_mark_32px.png
+    entity: skyengpro
+    type: icon
+    variant: mark
+    size: 32x32
+    version: "1.0"
+    owner: yannicksiewe
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [favicon, navbar-fallback]
+    status: active
+
+  - id: skyengpro_icon_mark_512
+    filename: brand/skyengpro/icon_mark_512px.png
+    entity: skyengpro
+    type: icon
+    variant: mark
+    size: 512x512
+    version: "1.0"
+    owner: yannicksiewe
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [app-icon, splash]
+    status: active
+
+  # ──────────────────────────────────────────
+  # ALI Capital (standalone tenant)
+  # ──────────────────────────────────────────
+  - id: ali_capital_logo_horizontal
+    filename: brand/ali_capital/logo_horizontal_color_150px.png
+    entity: ali_capital
+    type: logo
+    variant: horizontal-color
+    size: 150x30
+    version: "1.0"
+    owner: TODO-ali-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar-ali, letterhead-ali]
+    status: active
+
+  - id: ali_capital_icon_mark
+    filename: brand/ali_capital/icon_mark_32px.png
+    entity: ali_capital
+    type: icon
+    variant: mark
+    size: 32x32
+    version: "1.0"
+    owner: TODO-ali-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [favicon-ali]
+    status: active
+
+  - id: ali_capital_letterhead
+    filename: brand/ali_capital/letterhead_400px.png
+    entity: ali_capital
+    type: letterhead
+    variant: horizontal-color
+    size: 400x70
+    version: "1.0"
+    owner: TODO-ali-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [letterhead-ali]
+    status: active
+
+  # ──────────────────────────────────────────
+  # MC Capital (standalone tenant)
+  # ──────────────────────────────────────────
+  - id: mc_capital_logo_horizontal
+    filename: brand/mc_capital/logo_horizontal_color_150px.png
+    entity: mc_capital
+    type: logo
+    variant: horizontal-color
+    size: 150x30
+    version: "1.0"
+    owner: TODO-mc-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar-mc, letterhead-mc]
+    status: active
+
+  - id: mc_capital_icon_mark
+    filename: brand/mc_capital/icon_mark_32px.png
+    entity: mc_capital
+    type: icon
+    variant: mark
+    size: 32x32
+    version: "1.0"
+    owner: TODO-mc-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [favicon-mc]
+    status: active
+
+  - id: mc_capital_letterhead
+    filename: brand/mc_capital/letterhead_400px.png
+    entity: mc_capital
+    type: letterhead
+    variant: horizontal-color
+    size: 400x70
+    version: "1.0"
+    owner: TODO-mc-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [letterhead-mc]
+    status: active
+
+  # ──────────────────────────────────────────
+  # adorsys Ireland — placeholder (no assets yet; falls back to skyengpro)
+  # ──────────────────────────────────────────
+  - id: adorsys_logo_horizontal
+    filename: brand/adorsys/logo_horizontal_color_400px.png
+    entity: adorsys
+    type: logo
+    variant: horizontal-color
+    size: TBD
+    version: "0.0"
+    owner: TODO-adorsys-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar-adorsys, letterhead-adorsys]
+    status: placeholder
+
+  - id: adorsys_icon_mark
+    filename: brand/adorsys/icon_mark_32px.png
+    entity: adorsys
+    type: icon
+    variant: mark
+    size: TBD
+    version: "0.0"
+    owner: TODO-adorsys-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [favicon-adorsys]
+    status: placeholder
+
+  # ──────────────────────────────────────────
+  # Clemios — placeholder (no assets yet; falls back to skyengpro)
+  # ──────────────────────────────────────────
+  - id: clemios_logo_horizontal
+    filename: brand/clemios/logo_horizontal_color_400px.png
+    entity: clemios
+    type: logo
+    variant: horizontal-color
+    size: TBD
+    version: "0.0"
+    owner: TODO-clemios-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [navbar-clemios, letterhead-clemios]
+    status: placeholder
+
+  - id: clemios_icon_mark
+    filename: brand/clemios/icon_mark_32px.png
+    entity: clemios
+    type: icon
+    variant: mark
+    size: TBD
+    version: "0.0"
+    owner: TODO-clemios-brand-owner
+    source: TODO-add-figma-link
+    license: proprietary
+    where_used: [favicon-clemios]
+    status: placeholder
+
+# ──────────────────────────────────────────
+# TODOs (track follow-up work in this file so it's never lost)
+# ──────────────────────────────────────────
+todos:
+  - "Replace the 100x17 navbar PNG with proper SVG (designer task)"
+  - "Confirm ALI Capital brand colors with stakeholder; update ali_capital/colors.yaml"
+  - "Confirm MC Capital brand colors with stakeholder; update mc_capital/colors.yaml"
+  - "Provide adorsys logo + favicon + letterhead; drop into brand/adorsys/"
+  - "Provide Clemios logo + favicon + letterhead; drop into brand/clemios/"
+  - "Source Figma link or .ai file for each logo, populate `source:` fields"
+  - "Confirm exact ERPNext Company name for Clemios — update theme.py mapping"

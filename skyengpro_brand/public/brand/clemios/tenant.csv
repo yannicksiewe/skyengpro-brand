@@ -1,0 +1,19 @@
+field,value,notes
+# ──────────────────────────────────────────────
+# Tenant config for Clemios (independent standalone).
+# Edit fields below if needed (e.g. abbr, country, employee naming).
+# ──────────────────────────────────────────────
+slug,clemios,
+company_name,Clemios Sarl,Exact ERPNext Company name (matches live DB after manual creation)
+abbr,CS,Matches live DB
+country,Cameroon,Adjust if different country
+default_currency,XAF,Adjust if different currency
+chart_of_accounts,,
+is_group,0,
+parent_company,,Standalone
+employee_naming,CS-EMP-.#####,Matches abbr
+fiscal_year_start,01-01,
+fiscal_year_end,12-31,
+holiday_list_name,Cameroon Public Holidays,
+default_letterhead,,
+brand_slug,clemios,

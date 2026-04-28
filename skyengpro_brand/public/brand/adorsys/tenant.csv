@@ -1,0 +1,18 @@
+field,value,notes
+# ──────────────────────────────────────────────
+# Tenant config for adorsys Ireland (EoR partner — child of SkyEngPro).
+# ──────────────────────────────────────────────
+slug,adorsys,
+company_name,adorsys,Matches live DB name (was adorsys Ireland in design doc)
+abbr,ADO,
+country,Ireland,
+default_currency,EUR,
+chart_of_accounts,,Defaults to Ireland standard
+is_group,0,
+parent_company,Sky Engineering Professional,EoR design — child of Sky Engineering Professional
+employee_naming,ADO-EMP-.#####,
+fiscal_year_start,01-01,
+fiscal_year_end,12-31,
+holiday_list_name,Ireland Public Holidays,
+default_letterhead,,
+brand_slug,adorsys,

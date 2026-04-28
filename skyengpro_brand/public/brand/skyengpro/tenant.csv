@@ -1,0 +1,21 @@
+field,value,notes
+# ──────────────────────────────────────────────
+# Tenant config for SkyEngPro Sarl.
+# Edit this file in Excel / a text editor; rerun:
+#   bench --site <site> execute skyengpro_brand.tenant_setup.provision --kwargs "{'slug':'skyengpro'}"
+# Lines starting with '#' are ignored.
+# ──────────────────────────────────────────────
+slug,skyengpro,internal slug — must match the folder name under brand/
+company_name,Sky Engineering Professional,Exact ERPNext Company name (matches live DB)
+abbr,SEP,Short code (3-5 chars) used in naming series and account prefixes
+country,Cameroon,
+default_currency,XAF,ISO 4217 code
+chart_of_accounts,,Leave blank to use ERPNext's country default for Cameroon
+is_group,1,1 if this company has child companies (adorsys is child of Sky Engineering Professional)
+parent_company,,Empty = top-level company
+employee_naming,SEP-EMP-.#####,Naming series for Employee records
+fiscal_year_start,01-01,MM-DD
+fiscal_year_end,12-31,MM-DD
+holiday_list_name,Cameroon Public Holidays,Will be created/reused
+default_letterhead,,Letterhead name; auto-generated as "<Company> Letterhead" if blank
+brand_slug,skyengpro,Maps to brand/<slug>/colors.yaml + assets

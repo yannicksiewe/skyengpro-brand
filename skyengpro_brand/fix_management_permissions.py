@@ -1,6 +1,15 @@
 """
-Fix management user permissions for Branda + Beltine.
+Fix management user permissions for Branda + Beltine + Willie.
 Scripted so it can be re-run on any instance.
+
+Fixes applied:
+  1. Add missing roles for full management access
+  2. Remove Employee-level User Permission restriction
+  3. Update the "Finance + HR + Management" Role Profile
+  4. Remove spurious all-zero "Employee Self Service" Custom DocPerms
+     on Payroll doctypes (Salary Structure, Salary Component, Payroll Entry)
+     — these block the permission resolver and prevent create/modify in the UI
+  5. Clear permission caches
 """
 import frappe
 
@@ -75,18 +84,71 @@ if frappe.db.exists("Role Profile", profile_name):
 
 frappe.db.commit()
 
-# ─── 4. Verify ───
+# ─── 4. Remove spurious "Employee Self Service" Custom DocPerms ───
+# When a Custom DocPerm entry exists with ALL permissions = 0, Frappe's
+# permission resolver still evaluates it.  On Payroll doctypes this caused
+# Branda & Beltine to be unable to create/modify Salary Structures even
+# though their HR Manager / System Manager roles grant full access.
+print("\n--- Removing all-zero Employee Self Service Custom DocPerms ---")
+PAYROLL_DOCTYPES = [
+    "Salary Structure",
+    "Salary Structure Assignment",
+    "Salary Slip",
+    "Salary Component",
+    "Payroll Entry",
+    "Income Tax Slab",
+]
+
+for dt in PAYROLL_DOCTYPES:
+    ess_perms = frappe.get_all(
+        "Custom DocPerm",
+        filters={"parent": dt, "role": "Employee Self Service"},
+        fields=["name", "read", "write", "create", "submit", "amend", "delete"],
+    )
+    for p in ess_perms:
+        all_zero = (
+            not p.read and not p["write"] and not p.create
+            and not p.submit and not p.amend and not p["delete"]
+        )
+        if all_zero:
+            frappe.delete_doc("Custom DocPerm", p.name, force=True, ignore_permissions=True)
+            print("  Removed all-zero ESS perm from: " + dt)
+
+frappe.db.commit()
+
+# ─── 5. Clear permission caches ───
+print("\n--- Clearing caches ---")
+for email in MANAGEMENT_USERS:
+    frappe.cache.delete_value("user_permissions:" + email)
+    frappe.cache.delete_value("has_role:" + email)
+    frappe.cache.delete_value("roles:" + email)
+    print("  Cleared permission cache: " + email)
+
+frappe.clear_cache()
+print("  Full cache cleared")
+
+# ─── 6. Verify ───
 print("\n--- Verification ---")
 for email in MANAGEMENT_USERS:
+    if not frappe.db.exists("User", email):
+        continue
     frappe.set_user(email)
     can_create_supplier = frappe.has_permission("Supplier", ptype="create")
     can_create_customer = frappe.has_permission("Customer", ptype="create")
     emps = frappe.get_list("Employee", fields=["name"])
+
+    ss_create = frappe.has_permission("Salary Structure", ptype="create")
+    ss_write = frappe.has_permission("Salary Structure", ptype="write")
+    ss_submit = frappe.has_permission("Salary Structure", ptype="submit")
+    ss_amend = frappe.has_permission("Salary Structure", ptype="amend")
+
     print("  " + email + ":")
     print("    create Supplier: " + str(can_create_supplier))
     print("    create Customer: " + str(can_create_customer))
     print("    visible employees: " + str(len(emps)))
+    print("    Salary Structure: create=" + str(ss_create) + " write=" + str(ss_write)
+          + " submit=" + str(ss_submit) + " amend=" + str(ss_amend))
+    frappe.set_user("Administrator")
 
-frappe.clear_cache()
 print("\nDone")
 frappe.destroy()

@@ -1,0 +1,12 @@
+# adorsys (Ireland EoR partner) color tokens.
+# TODO: confirm with adorsys brand owner.
+# Until adorsys provides their own assets, the boot_session hook falls back
+# to the SkyEngPro brand for adorsys-mapped users.
+
+primary: "#CC7A1A"          # PLACEHOLDER — falls back to SkyEngPro
+primary_hover: "#B56A12"    # PLACEHOLDER
+primary_light: "#F5E6D0"    # PLACEHOLDER
+navbar_bg: "#1A2E4F"        # PLACEHOLDER (deep slate as visual differentiator)
+navbar_fg: "#FFFFFF"
+text_color: "#1F2937"
+text_muted: "#6B7280"

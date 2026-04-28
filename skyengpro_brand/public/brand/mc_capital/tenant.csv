@@ -1,0 +1,18 @@
+field,value,notes
+# ──────────────────────────────────────────────
+# Tenant config for MC Capital (independent standalone).
+# ──────────────────────────────────────────────
+slug,mc_capital,
+company_name,MC Capital,
+abbr,MCC,
+country,Cameroon,
+default_currency,XAF,
+chart_of_accounts,,
+is_group,0,
+parent_company,,Standalone
+employee_naming,MCC-EMP-.#####,
+fiscal_year_start,01-01,
+fiscal_year_end,12-31,
+holiday_list_name,Cameroon Public Holidays,
+default_letterhead,,
+brand_slug,mc_capital,

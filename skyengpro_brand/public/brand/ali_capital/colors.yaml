@@ -1,0 +1,11 @@
+# ALI Capital color tokens.
+# TODO: confirm with ALI Capital brand owner; placeholder values below
+# follow SkyEngPro for now so the per-tenant mechanism works end-to-end.
+
+primary: "#CC7A1A"          # PLACEHOLDER — replace with ALI Capital brand color
+primary_hover: "#B56A12"    # PLACEHOLDER
+primary_light: "#F5E6D0"    # PLACEHOLDER
+navbar_bg: "#1E3A5F"        # PLACEHOLDER (deep navy as visual differentiator)
+navbar_fg: "#FFFFFF"
+text_color: "#1F2937"
+text_muted: "#6B7280"

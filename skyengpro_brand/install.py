@@ -201,17 +201,31 @@ def copy_brand_assets():
 
 
 def apply_website_settings():
+    """Set SkyEngPro defaults for Website Settings.
+
+    Note: the URLs below point at the new `brand/skyengpro/` folder layout.
+    Per-tenant logo swap on the desk happens client-side via brand_loader.js;
+    Website Settings is the *fallback* for guest pages (login, portal).
+    """
     ws = frappe.get_single("Website Settings")
     ws.app_name = "SEP ERP"
-    ws.brand_image = "/files/SkyEngPro_Logo_Primary_400px.png"
-    ws.favicon = "/files/SkyEngPro_Icon_32px.png"
-    ws.splash_image = "/files/SkyEngPro_Logo_Tagline_800px.png"
+    ws.brand_image = "/assets/skyengpro_brand/brand/skyengpro/logo_horizontal_color_400px.png"
+    ws.favicon     = "/assets/skyengpro_brand/brand/skyengpro/icon_mark_32px.png"
+    ws.splash_image = "/assets/skyengpro_brand/brand/skyengpro/logo_tagline_color_800px.png"
     ws.save(ignore_permissions=True)
 
 
 def apply_navbar_settings():
+    """Set the navbar logo to the COLOR variant.
+
+    The login page reads `Navbar Settings.app_logo` and renders it on a
+    light background — the white variant was invisible there. The color
+    logo works on both the dark desk navbar and the light login card.
+    For users who want a true white logo on dark navbar, brand_loader.js
+    can be extended to swap based on theme.
+    """
     ns = frappe.get_single("Navbar Settings")
-    ns.app_logo = "/files/SkyEngPro_Logo_White_Navbar.png"
+    ns.app_logo = "/assets/skyengpro_brand/brand/skyengpro/logo_horizontal_color_400px.png"
     ns.save(ignore_permissions=True)
 
 
