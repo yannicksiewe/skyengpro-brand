@@ -282,6 +282,10 @@ WORKSPACE_RESTRICTIONS = {
     # ── Misc ──
     "Support":           ["Support Team", "System Manager"],
     "Helpdesk":          ["Support Team", "Agent"],
+    "Frappe CRM":        ["Sales Manager", "Sales User"],
+    "HR Setup":          ["HR Manager"],
+    "Tenure":            ["HR Manager"],
+    "Website":           ["System Manager", "Website Manager"],
 }
 
 
