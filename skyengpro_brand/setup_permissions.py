@@ -38,30 +38,64 @@ def setup_desk_permissions():
 
 
 def setup_workspace_restrictions():
-    """Set role restrictions on workspaces so only authorized roles see them.
+    """Set role restrictions on workspaces so only authorized roles
+    see them in the sidebar.
 
-    Uses the Workspace.roles child table. If a workspace has roles set,
-    only users with at least one of those roles will see it in the sidebar.
+    Implementation note — we INSERT directly into `tabHas Role` rather
+    than going through `frappe.get_doc("Workspace").save()`. ERPNext
+    ships several workspaces with broken state in the v16.x line
+    (Stock has stale Report links to removed doctypes like
+    "BOM Stock Report"; Helpdesk ships with a NULL `type` that the
+    schema marks mandatory). The Document layer validates EVERYTHING
+    on save — orphan links, missing mandatory, etc. — so our
+    role-only edit triggers unrelated failures and aborts the entire
+    install pipeline.
+
+    The Workspace `roles` child uses doctype "Has Role" (same as
+    User.roles), parent = workspace name, parenttype = "Workspace",
+    parentfield = "roles". Direct SQL is the only stable path here.
+
+    Idempotent: skip if a (workspace, role) row already exists.
     """
     for ws_name, roles in WORKSPACE_RESTRICTIONS.items():
         if not frappe.db.exists("Workspace", ws_name):
-            frappe.logger("skyengpro").warning("Workspace '%s' not found, skipping", ws_name)
+            frappe.logger("skyengpro").debug("Workspace '%s' not found, skipping", ws_name)
             continue
 
-        ws = frappe.get_doc("Workspace", ws_name)
-        existing_roles = set(r.role for r in ws.roles) if ws.roles else set()
+        existing_roles = {
+            r["role"] for r in frappe.db.sql(
+                """SELECT role FROM `tabHas Role`
+                   WHERE parent = %s AND parenttype = 'Workspace'""",
+                ws_name, as_dict=True,
+            )
+        }
 
-        changed = False
+        added = []
         for role in roles:
-            if role not in existing_roles and frappe.db.exists("Role", role):
-                ws.append("roles", {"role": role})
-                existing_roles.add(role)
-                changed = True
+            if role in existing_roles:
+                continue
+            if not frappe.db.exists("Role", role):
+                continue
+            frappe.db.sql(
+                """INSERT INTO `tabHas Role`
+                   (name, parent, parenttype, parentfield, idx, role,
+                    creation, modified, modified_by, owner, docstatus)
+                   VALUES (%s, %s, 'Workspace', 'roles', %s, %s,
+                           NOW(), NOW(), 'Administrator', 'Administrator', 0)""",
+                (
+                    frappe.generate_hash(length=10),
+                    ws_name,
+                    len(existing_roles) + len(added) + 1,
+                    role,
+                ),
+            )
+            added.append(role)
 
-        if changed:
-            ws.save(ignore_permissions=True)
+        if added:
             frappe.logger("skyengpro").info(
-                "Workspace '%s' restricted to: %s", ws_name, ", ".join(existing_roles)
+                "Workspace '%s' role-restricted: added %s (now: %s)",
+                ws_name, ", ".join(added),
+                ", ".join(sorted(existing_roles | set(added))),
             )
 
     frappe.db.commit()
