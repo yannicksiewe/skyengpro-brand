@@ -33,14 +33,31 @@ def after_install():
     apply_navbar_settings()
     apply_system_settings()
 
-    # 2. Module Profiles (from config.py)
-    from skyengpro_brand.setup_roles import setup_module_profiles, sync_all_users_profiles
+    # 2. Module Profiles + custom roles + default-profile reconciliation.
+    #    Order matters: custom roles must exist BEFORE any DocPerm or
+    #    Workspace.roles row references them; default-profile attach
+    #    must run AFTER setup_module_profiles creates the profile docs.
+    from skyengpro_brand.setup_roles import (
+        apply_default_profile_to_existing,
+        ensure_custom_roles,
+        setup_module_profiles,
+        sync_all_users_profiles,
+    )
+    ensure_custom_roles()
     setup_module_profiles()
+    apply_default_profile_to_existing()
     sync_all_users_profiles()
 
     # 3. Desk & Workspace Permissions
     from skyengpro_brand.setup_permissions import setup_all_permissions
     setup_all_permissions()
+
+    # 3b. Salary Slip leak fix: User -> Employee User Permission for
+    #     every user with a linked Employee. ESS's if_owner doesn't
+    #     cover list/report/REST — User Permission does. Runs after
+    #     module profiles so role-related setup is complete.
+    from skyengpro_brand.user_lifecycle import ensure_user_employee_permissions
+    ensure_user_employee_permissions()
 
     # 4. Performance indexes for capacity-planning aggregations
     ensure_capacity_indexes()

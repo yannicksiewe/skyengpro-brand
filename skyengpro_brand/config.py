@@ -218,30 +218,116 @@ PROFILES = {
 # ─────────────────────────────────────────────────────────────
 WORKSPACE_RESTRICTIONS = {
     # Admin-only workspaces
-    "ERPNext Settings": ["System Manager"],
-    "Build": ["System Manager"],
-    "Users": ["System Manager"],
-    "Integrations": ["System Manager"],
+    "ERPNext Settings":  ["System Manager"],
+    "Build":             ["System Manager"],
+    "Users":             ["System Manager"],
+    "Integrations":      ["System Manager"],
     "ERPNext Integrations": ["System Manager"],
     "Welcome Workspace": ["System Manager"],
+    "Settings":          ["System Manager"],
+    "Customization":     ["System Manager"],
+    "Tools":             ["System Manager"],
+    "Automation":        ["System Manager"],
 
-    # HR Manager workspaces (admin + HR managers)
-    "HR": ["HR Manager", "HR User"],
-    "Recruitment": ["HR Manager"],
-    "Employee Lifecycle": ["HR Manager"],
-    "Performance": ["HR Manager"],
-    "Shift & Attendance": ["HR Manager"],
-
-    # Finance workspaces (admin + accounts roles)
-    "Salary Payout": ["HR Manager", "Accounts Manager"],
-    "Tax & Benefits": ["HR Manager", "Accounts Manager"],
-    "Payables": ["Accounts User", "Accounts Manager"],
-    "Receivables": ["Accounts User", "Accounts Manager"],
+    # ── Accounting/Finance — fully hidden from non-Accounts users ──
+    # User explicitly asked: "completely remove 'Accounting' from user".
+    # The Accounting workspace + Payments + Accounts Setup all live here.
+    "Accounting":        ["Accounts Manager", "Accounts User"],
+    "Accounts":          ["Accounts Manager", "Accounts User"],
+    "Payments":          ["Accounts Manager", "Accounts User"],
+    "Accounts Setup":    ["Accounts Manager"],
+    "Salary Payout":     ["HR Manager", "Accounts Manager"],
+    "Tax & Benefits":    ["HR Manager", "Accounts Manager"],
+    "Payables":          ["Accounts User", "Accounts Manager"],
+    "Receivables":       ["Accounts User", "Accounts Manager"],
     "Financial Reports": ["Accounts User", "Accounts Manager"],
 
-    # Support workspace
-    "Support": ["Support Team", "System Manager"],
+    # ── Buying & Selling — hidden from regular employees ──
+    "Buying":            ["Purchase Manager", "Purchase User"],
+    "Selling":           ["Sales Manager", "Sales User"],
+    "CRM":               ["Sales Manager", "Sales User"],
+
+    # ── Stock & Manufacturing — hidden from regular employees ──
+    "Stock":             ["Stock Manager", "Stock User"],
+    "Manufacturing":     ["Manufacturing Manager", "Manufacturing User"],
+    "Assets":            ["Accounts Manager", "Stock Manager"],
+    "Quality":           ["Stock Manager", "Manufacturing Manager"],
+    "Subcontracting":    ["Manufacturing User", "Manufacturing Manager"],
+    "Maintenance":       ["Stock Manager", "Manufacturing Manager"],
+
+    # ── Vertical apps — hidden from default org ──
+    "Healthcare":        ["Healthcare Administrator"],
+    "Education":         ["Academics User"],
+    "Non Profit":        ["NPO Admin"],
+    "Hospitality":       ["Restaurant Manager"],
+    "Agriculture":       ["Agriculture User", "Agriculture Manager"],
+    "Loan":              ["Loan Manager"],
+
+    # ── HR — split: regular employees see HR shell, sub-workspaces gated ──
+    # HR workspace itself stays accessible to Employee role so the cards
+    # for Expenses / Leaves / Payroll are reachable. The sub-workspaces
+    # listed below are HR-Manager-only.
+    "HR":                ["HR Manager", "HR User", "Employee"],
+    "Recruitment":       ["HR Manager"],
+    "Employee Lifecycle": ["HR Manager"],
+    "Performance":       ["HR Manager"],
+    "Shift & Attendance": ["HR Manager"],
+    "HR Settings":       ["HR Manager"],
+
+    # Payroll — visible to employees so they can read their own payslip.
+    # The doctype-level "Employee Self Service" role + the Salary Slip
+    # User Permission (created in install.py) restrict to own records.
+    "Payroll":           ["HR Manager", "HR User", "Employee"],
+
+    # ── Misc ──
+    "Support":           ["Support Team", "System Manager"],
+    "Helpdesk":          ["Support Team", "Agent"],
 }
+
+
+# ─────────────────────────────────────────────────────────────
+# Custom roles created by skyengpro_brand
+#
+# These are "soft-assignable" roles a Manager grants on demand to
+# selectively unlock tabs/sections that Wave-2 permlevel gates have
+# locked. Created in setup_roles.ensure_custom_roles().
+# ─────────────────────────────────────────────────────────────
+CUSTOM_ROLES = [
+    {
+        "role_name": "Project Costing Viewer",
+        "desk_access": 1,
+        "description": (
+            "Grants visibility on the Project doctype's Costing tab "
+            "(total_costing_amount, total_purchase_cost, gross_margin, "
+            "etc.). Assign per-user — not granted by default."
+        ),
+    },
+    {
+        "role_name": "Project More Info Viewer",
+        "desk_access": 1,
+        "description": (
+            "Grants visibility on the Project doctype's More Info "
+            "section (estimated_costing, actual + planned amounts, "
+            "internal notes). Assign per-user — not granted by default."
+        ),
+    },
+]
+
+
+# ─────────────────────────────────────────────────────────────
+# Default Module Profile auto-attached to new + existing users
+# without a profile (skips Administrator + System Managers).
+# Picks "SkyEngPro Employee" because it matches the canonical
+# regular-employee persona (Expenses / Leaves / Payslip / Projects).
+# ─────────────────────────────────────────────────────────────
+DEFAULT_MODULE_PROFILE = "SkyEngPro Employee"
+
+# Roles to auto-attach to a brand-new user along with the default
+# Module Profile. "Employee Self Service" is the canonical Frappe role
+# that grants owner-only Leave/Expense/Salary Slip access — without
+# this the user can't see their own payslip even with Module Profile
+# saying "Payroll" is allowed.
+DEFAULT_USER_ROLES = ["Employee", "Employee Self Service"]
 
 
 # ─────────────────────────────────────────────────────────────

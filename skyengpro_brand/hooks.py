@@ -84,6 +84,16 @@ doc_events = {
     # project the user isn't assigned to. Closes the validate_link
     # save-by-name bypass that permission_query_conditions cannot.
     "Timesheet": {"validate": "skyengpro_brand.tenant_scope.validate_timesheet_projects"},
+    # Auto-attach default Module Profile + Employee/ESS roles on new
+    # System User creation. Runs synchronously inside the User insert
+    # so first-login already gets a shaped sidebar.
+    "User":      {"after_insert": "skyengpro_brand.user_lifecycle.on_user_after_insert"},
+    # Keep User -> Employee User Permission (Salary Slip leak guard)
+    # in sync when HR links/unlinks a User from an Employee.
+    "Employee":  {
+        "after_insert": "skyengpro_brand.user_lifecycle.on_employee_save",
+        "on_update":    "skyengpro_brand.user_lifecycle.on_employee_save",
+    },
 }
 
 after_install = "skyengpro_brand.install.after_install"
