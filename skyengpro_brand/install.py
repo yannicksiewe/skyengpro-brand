@@ -57,6 +57,13 @@ def after_install():
     #    to a tenant. Wired into permission_query_conditions via hooks.py.
     ensure_tenant_company_fields()
 
+    # 8. Per-user Project scope: backfill existing projects so their
+    #    creator is in the Users child table. Without this, projects
+    #    that pre-date this release become invisible to their creators
+    #    (project_query's owner clause covers them, but the canonical
+    #    Users tab is empty — confusing UX).
+    backfill_project_creator_membership()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 
@@ -271,6 +278,11 @@ def ensure_capacity_indexes():
         ("tabToDo", "idx_skyeng_todo_alloc_ref", ["allocated_to", "reference_type", "reference_name"]),
         ("tabLeave Application", "idx_skyeng_leave_emp_status_dates", ["employee", "status", "from_date", "to_date"]),
         ("tabAttendance", "idx_skyeng_attendance_emp_status_date", ["employee", "status", "attendance_date"]),
+        # tenant_scope.project_query joins to `tabProject User` on every
+        # Project list view + Link autocomplete keystroke. Frappe doesn't
+        # ship a parent+user index, so without this the EXISTS subquery
+        # table-scans once project teams grow past a few hundred rows.
+        ("tabProject User", "idx_skyeng_project_user_parent_user", ["parent", "user"]),
     ]
     for table, name, cols in indexes:
         if _index_exists(table, name):
@@ -281,6 +293,46 @@ def ensure_capacity_indexes():
             frappe.logger("skyengpro").info("Created index %s on %s", name, table)
         except Exception as e:
             frappe.logger("skyengpro").warning("Index %s on %s failed: %s", name, table, e)
+
+
+def backfill_project_creator_membership():
+    """Ensure every existing Project has its `owner` listed in the
+    `users` child table. Idempotent — safe to re-run on every migrate.
+
+    The before_insert hook (auto_add_project_creator) handles new
+    projects going forward; this function covers the pre-existing
+    rows so the Project visibility flip doesn't strand them.
+
+    Skipped for projects whose owner is Administrator/Guest — those
+    are bench-driven and don't need a UX-facing membership row.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT p.name, p.owner
+        FROM `tabProject` p
+        WHERE p.owner IS NOT NULL
+          AND p.owner NOT IN ('Administrator', 'Guest')
+          AND NOT EXISTS (
+            SELECT 1 FROM `tabProject User` pu
+            WHERE pu.parent = p.name AND pu.user = p.owner
+          )
+        """,
+        as_dict=True,
+    )
+    added = 0
+    for r in rows:
+        try:
+            proj = frappe.get_doc("Project", r["name"])
+            proj.append("users", {"user": r["owner"], "welcome_email_sent": 1})
+            proj.save(ignore_permissions=True)
+            added += 1
+        except Exception:
+            frappe.logger("skyengpro").exception(
+                "backfill_project_creator_membership: failed for %s", r["name"]
+            )
+    frappe.logger("skyengpro").info(
+        "backfill_project_creator_membership: added owner to users on %d project(s)", added
+    )
 
 
 def _index_exists(table, index_name):

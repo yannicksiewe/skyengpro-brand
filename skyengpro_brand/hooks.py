@@ -46,20 +46,27 @@ override_whitelisted_methods = {
 # tenant_scope.get_user_company; behaviour for NULL company is per-doctype
 # (strict for Customer/Supplier/Item, allow-as-global for Letter Head).
 has_permission = {
-    "User":        "skyengpro_brand.user_permission.user_has_permission",
-    "Company":     "skyengpro_brand.tenant_scope.company_has_perm",
-    "Customer":    "skyengpro_brand.tenant_scope.customer_has_perm",
-    "Supplier":    "skyengpro_brand.tenant_scope.supplier_has_perm",
-    "Item":        "skyengpro_brand.tenant_scope.item_has_perm",
-    "Letter Head": "skyengpro_brand.tenant_scope.letter_head_has_perm",
+    "User":             "skyengpro_brand.user_permission.user_has_permission",
+    "Company":          "skyengpro_brand.tenant_scope.company_has_perm",
+    "Customer":         "skyengpro_brand.tenant_scope.customer_has_perm",
+    "Supplier":         "skyengpro_brand.tenant_scope.supplier_has_perm",
+    "Item":             "skyengpro_brand.tenant_scope.item_has_perm",
+    "Letter Head":      "skyengpro_brand.tenant_scope.letter_head_has_perm",
+    "Project":          "skyengpro_brand.tenant_scope.project_has_perm",
+    "Project User":     "skyengpro_brand.tenant_scope.project_user_has_perm",
+    "Task":             "skyengpro_brand.tenant_scope.task_has_perm",
 }
 permission_query_conditions = {
-    "User":        "skyengpro_brand.user_permission.user_query_conditions",
-    "Company":     "skyengpro_brand.tenant_scope.company_query",
-    "Customer":    "skyengpro_brand.tenant_scope.customer_query",
-    "Supplier":    "skyengpro_brand.tenant_scope.supplier_query",
-    "Item":        "skyengpro_brand.tenant_scope.item_query",
-    "Letter Head": "skyengpro_brand.tenant_scope.letter_head_query",
+    "User":             "skyengpro_brand.user_permission.user_query_conditions",
+    "Company":          "skyengpro_brand.tenant_scope.company_query",
+    "Customer":         "skyengpro_brand.tenant_scope.customer_query",
+    "Supplier":         "skyengpro_brand.tenant_scope.supplier_query",
+    "Item":             "skyengpro_brand.tenant_scope.item_query",
+    "Letter Head":      "skyengpro_brand.tenant_scope.letter_head_query",
+    "Project":          "skyengpro_brand.tenant_scope.project_query",
+    "Project User":     "skyengpro_brand.tenant_scope.project_user_query",
+    "Task":             "skyengpro_brand.tenant_scope.task_query",
+    "Timesheet Detail": "skyengpro_brand.tenant_scope.timesheet_detail_query",
 }
 
 # Auto-tag the company on insert so new Customer/Supplier/Item records
@@ -67,9 +74,16 @@ permission_query_conditions = {
 # auto-tagged — leaving its company empty marks it as shared across
 # tenants (matches the allow-NULL behaviour of letter_head_query).
 doc_events = {
-    "Customer": {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
-    "Supplier": {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
-    "Item":     {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    "Customer":  {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    "Supplier":  {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    "Item":      {"before_insert": "skyengpro_brand.tenant_scope.auto_tag_company"},
+    # Auto-add the creator to Project.users so the canonical team UI
+    # is always seeded with at least one member (the creator).
+    "Project":   {"before_insert": "skyengpro_brand.tenant_scope.auto_add_project_creator"},
+    # Hard-block Timesheet save when any time_logs row references a
+    # project the user isn't assigned to. Closes the validate_link
+    # save-by-name bypass that permission_query_conditions cannot.
+    "Timesheet": {"validate": "skyengpro_brand.tenant_scope.validate_timesheet_projects"},
 }
 
 after_install = "skyengpro_brand.install.after_install"
