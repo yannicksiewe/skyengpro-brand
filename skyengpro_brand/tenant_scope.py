@@ -232,10 +232,12 @@ def auto_tag_company(doc, method=None):
 # ERPNext leaves Projects globally visible inside a Company — every
 # user with the Projects User role sees every project. We narrow to
 # "user is on the project team": Project.users child row, or
-# project_manager, or document owner. The tenant scope
-# (project.company = user_company) is preserved with explicit AND so
-# the tenant guard cannot be associativity-dropped by the assignment
-# OR-clause.
+# document owner. (ERPNext v16 dropped the legacy `project_manager`
+# scalar field — the canonical way to mark a PM is to add them to
+# Project.users; the role/manager distinction is informational.)
+# The tenant scope (project.company = user_company) is preserved
+# with explicit AND so the tenant guard cannot be associativity-
+# dropped by the assignment OR-clause.
 #
 # Same scoping is mirrored on:
 #   - Project User (child table — direct /api/resource/Project User
@@ -267,8 +269,7 @@ def project_query(user=None):
     """permission_query_conditions for Project: tenant + assignment.
 
     SQL shape:
-      (company = X) AND ((owner = u) OR (project_manager = u)
-                         OR EXISTS row in `tabProject User`)
+      (company = X) AND ((owner = u) OR EXISTS row in `tabProject User`)
 
     The outer AND with parens is CRITICAL — a flat OR of company +
     assignment would let a user see every project they're assigned to
@@ -292,7 +293,6 @@ def project_query(user=None):
     return (
         f"(`tabProject`.company = {qc}) "
         f"AND ((`tabProject`.owner = {u}) "
-        f"OR (`tabProject`.project_manager = {u}) "
         f"OR EXISTS (SELECT 1 FROM `tabProject User` pu "
         f"WHERE pu.parent = `tabProject`.name AND pu.user = {u}))"
     )
@@ -314,8 +314,7 @@ def project_has_perm(doc, ptype="read", user=None):
         return False
 
     doc_owner = doc.get("owner") if hasattr(doc, "get") else getattr(doc, "owner", None)
-    doc_pm = doc.get("project_manager") if hasattr(doc, "get") else getattr(doc, "project_manager", None)
-    if doc_owner == user or doc_pm == user:
+    if doc_owner == user:
         return True
 
     name = doc.get("name") if hasattr(doc, "get") else getattr(doc, "name", None)
@@ -351,7 +350,6 @@ def project_user_query(user=None):
         f"WHERE p.name = `tabProject User`.parent "
         f"AND p.company = {qc} "
         f"AND ((p.owner = {u}) "
-        f"OR (p.project_manager = {u}) "
         f"OR EXISTS (SELECT 1 FROM `tabProject User` pu2 "
         f"WHERE pu2.parent = p.name AND pu2.user = {u})))"
     )
@@ -392,7 +390,6 @@ def task_query(user=None):
         f"WHERE p.name = `tabTask`.project "
         f"AND p.company = {qc} "
         f"AND ((p.owner = {u}) "
-        f"OR (p.project_manager = {u}) "
         f"OR EXISTS (SELECT 1 FROM `tabProject User` pu "
         f"WHERE pu.parent = p.name AND pu.user = {u})))"
     )
@@ -436,7 +433,6 @@ def timesheet_detail_query(user=None):
         f"WHERE p.name = `tabTimesheet Detail`.project "
         f"AND p.company = {qc} "
         f"AND ((p.owner = {u}) "
-        f"OR (p.project_manager = {u}) "
         f"OR EXISTS (SELECT 1 FROM `tabProject User` pu "
         f"WHERE pu.parent = p.name AND pu.user = {u}))))"
     )
@@ -472,7 +468,7 @@ def validate_timesheet_projects(doc, method=None):
         if not project_has_perm(proj, "read", user):
             frappe.throw(
                 f"You are not assigned to project '{project}'. Ask the "
-                f"project manager to add you under Project > Users "
+                f"project owner to add you under Project > Users "
                 f"before logging time.",
                 title="Timesheet: project access denied",
             )
