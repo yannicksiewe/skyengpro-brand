@@ -335,6 +335,152 @@ DEFAULT_USER_ROLES = ["Employee", "Employee Self Service"]
 
 
 # ─────────────────────────────────────────────────────────────
+# Wave 2: field-level permlevel gates
+#
+# Each entry hides a doctype's tab/section by raising the `permlevel`
+# of every field in it. Standard DocPerm rules grant non-admin roles
+# read at permlevel 0 only — fields at permlevel >0 silently disappear
+# from the form, list, and REST API. An assignable role (with read at
+# the elevated permlevel via Custom DocPerm) becomes the unlock key.
+#
+# CRITICAL: mandatory fields (reqd=1) are excluded from gating —
+# raising permlevel on a mandatory field breaks save for everyone
+# without that level. The architect's pre-flight: every field listed
+# below must be reqd=0 in its doctype JSON.
+#
+# Schema: {role_name: {permlevel: [list of fieldnames]}}
+# ─────────────────────────────────────────────────────────────
+
+# Project fields → gated by Project Costing Viewer (Costing tab) or
+# Project More Info Viewer (Notes/Progress tab). `company` (reqd=1)
+# stays at permlevel 0 — leave it visible.
+PROJECT_FIELD_PERMLEVELS = {
+    "Project Costing Viewer": {
+        2: [
+            # Section: Costing and Billing
+            "project_details",
+            "estimated_costing",
+            "total_costing_amount",
+            "total_purchase_cost",
+            "column_break_28",
+            "total_sales_amount",
+            "total_billable_amount",
+            "total_billed_amount",
+            "total_consumed_material_cost",
+            "cost_center",
+            # Section: Margin
+            "margin",
+            "gross_margin",
+            "column_break_37",
+            "per_gross_margin",
+        ],
+    },
+    "Project More Info Viewer": {
+        3: [
+            # Section: Notes
+            "section_break0",
+            "notes",
+            # Progress-collection fields (post-margin)
+            "collect_progress",
+            "holiday_list",
+            "frequency",
+            "from_time",
+            "to_time",
+            "first_email",
+            "second_email",
+            "daily_time_to_send",
+            "day_to_send",
+            "weekly_time_to_send",
+            "column_break_45",
+            "message",
+            # naming_series is reqd=1 — kept at permlevel 0
+            "subject",
+        ],
+    },
+}
+
+# Company fields → Accounts/Stock/Buying-Selling tabs. Mandatory
+# fields kept at permlevel 0: company_name, abbr, default_currency,
+# country.
+COMPANY_FIELD_PERMLEVELS = {
+    "Accounts User": {
+        4: [
+            # Default Accounts section
+            "default_settings",
+            "default_bank_account",
+            "default_cash_account",
+            "default_receivable_account",
+            "round_off_account",
+            "round_off_cost_center",
+            "write_off_account",
+            "exchange_gain_loss_account",
+            "unrealized_exchange_gain_loss_account",
+            "column_break0",
+            "allow_account_creation_against_child_company",
+            "default_payable_account",
+            "default_expense_account",
+            "default_income_account",
+            "default_deferred_revenue_account",
+            "default_deferred_expense_account",
+            "cost_center",
+            "credit_limit",
+            "payment_terms",
+            # Stock Settings (financial side)
+            "auto_accounting_for_stock_settings",
+            "enable_perpetual_inventory",
+            "default_inventory_account",
+            "stock_adjustment_account",
+            "column_break_32",
+            "stock_received_but_not_billed",
+            "accumulated_depreciation_account",
+            "depreciation_expense_account",
+            "series_for_depreciation_entry",
+            "column_break_40",
+            "disposal_account",
+            "depreciation_cost_center",
+            "capital_work_in_progress_account",
+            "asset_received_but_not_billed",
+            # Budget Detail
+            "budget_detail",
+            "exception_budget_approver_role",
+            # Chart of Accounts
+            "section_break_28",
+            "enable_provisional_accounting_for_non_stock_items",
+            "default_provisional_account",
+            # Advance Payments
+            "advance_payments_section",
+            "default_advance_received_account",
+            "default_advance_paid_account",
+            "column_break_fwcf",
+            "book_advance_payments_in_separate_party_account",
+            # Exchange Rate
+            "exchange_rate_revaluation_settings_section",
+            "auto_exchange_rate_revaluation",
+            "auto_err_frequency",
+            "submit_err_jv",
+            # Other accounting-flavoured fields
+            "default_selling_terms",
+            "default_buying_terms",
+            "default_in_transit_warehouse",
+            "unrealized_profit_loss_account",
+            "default_discount_account",
+        ],
+    },
+    "Sales User": {
+        5: [
+            # Buying & Selling Settings section
+            "sales_settings",
+            "sales_monthly_history",
+            "transactions_annual_history",
+            "monthly_sales_target",
+            "column_break_goals",
+            "total_monthly_sales",
+        ],
+    },
+}
+
+
+# ─────────────────────────────────────────────────────────────
 # Roles that need Page doctype read permission (for desk access)
 # Without this, users get "Not permitted for document Page" error.
 # ─────────────────────────────────────────────────────────────

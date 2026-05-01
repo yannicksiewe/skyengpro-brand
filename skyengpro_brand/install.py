@@ -59,6 +59,15 @@ def after_install():
     from skyengpro_brand.user_lifecycle import ensure_user_employee_permissions
     ensure_user_employee_permissions()
 
+    # 3c. Wave 2: field-level permlevel gates on Project + Company.
+    #     Hides Costing/More Info tabs on Project and the
+    #     Accounts/Buying-Selling/Stock subtabs on Company from regular
+    #     users. Unlocked per-user via the Project Costing Viewer /
+    #     Project More Info Viewer custom roles (and Accounts User /
+    #     Sales User for Company subtabs).
+    from skyengpro_brand.field_perms import apply_field_permlevels
+    apply_field_permlevels()
+
     # 4. Performance indexes for capacity-planning aggregations
     ensure_capacity_indexes()
 
