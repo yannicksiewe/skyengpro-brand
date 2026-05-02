@@ -131,6 +131,12 @@ def after_install():
     #     earlier release placed them).
     ensure_self_service_workspace()
 
+    # 13. Self Service desktop icon — adds a top-level card on
+    #     /desk's apps grid. The grid renders from tabDesktop Icon
+    #     (standard=1, hidden=0, no parent_icon), not from the
+    #     add_to_apps_screen hook.
+    ensure_self_service_desktop_icon()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 
@@ -339,6 +345,49 @@ SELF_SERVICE_SHORTCUTS = [
     ("Salary Slip",       "My Salary Slips",      "List", "Blue"),
     ("Expense Claim",     "Submit Expense",       "New",  "Orange"),
 ]
+SELF_SERVICE_DESKTOP_ICON = {
+    "name":       SELF_SERVICE_WORKSPACE,
+    "label":      SELF_SERVICE_WORKSPACE,
+    "app":        "skyengpro_brand",
+    "icon_type":  "App",
+    "link_type":  "External",
+    "link":       "/desk/self-service",
+    "logo_url":   "/assets/skyengpro_brand/brand/skyengpro/icon_mark_512px.png",
+    "standard":   1,
+    "hidden":     0,
+    "idx":        50,
+}
+
+
+def ensure_self_service_desktop_icon():
+    """Add a top-level 'Self Service' card to /desk.
+
+    The dashboard apps grid is built from `bootinfo.desktop_icons`
+    (tabDesktop Icon, standard=1, hidden=0, no parent_icon). Apps
+    like Framework / Frappe HR / Organization each ship one of
+    these. Adding our own gives Self Service a one-click entry from
+    the desktop, matching the visual treatment of every other
+    top-level app card.
+
+    Idempotent: existing Desktop Icon row is patched to match
+    SELF_SERVICE_DESKTOP_ICON; otherwise inserted fresh.
+    """
+    spec = SELF_SERVICE_DESKTOP_ICON
+    if frappe.db.exists("Desktop Icon", spec["name"]):
+        for k, v in spec.items():
+            if k == "name":
+                continue
+            frappe.db.set_value(
+                "Desktop Icon", spec["name"], k, v, update_modified=False
+            )
+        return
+    try:
+        doc = frappe.get_doc({"doctype": "Desktop Icon", **spec})
+        doc.insert(ignore_permissions=True)
+    except Exception:
+        frappe.logger("skyengpro").exception(
+            "ensure_self_service_desktop_icon: insert failed"
+        )
 
 
 def ensure_self_service_workspace():
