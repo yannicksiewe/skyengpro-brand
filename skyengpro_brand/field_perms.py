@@ -29,6 +29,7 @@ from frappe.custom.doctype.property_setter.property_setter import make_property_
 
 from skyengpro_brand.config import (
     COMPANY_FIELD_PERMLEVELS,
+    EMPLOYEE_FIELD_PERMLEVELS,
     PROJECT_FIELD_PERMLEVELS,
 )
 
@@ -37,6 +38,7 @@ def apply_field_permlevels():
     """Entry point — wired into install.py after_install."""
     _apply_doctype_gates("Project", PROJECT_FIELD_PERMLEVELS)
     _apply_doctype_gates("Company", COMPANY_FIELD_PERMLEVELS)
+    _apply_doctype_gates("Employee", EMPLOYEE_FIELD_PERMLEVELS)
     frappe.db.commit()
 
 
@@ -66,6 +68,12 @@ def _apply_doctype_gates(doctype: str, gates: dict):
 def _set_field_permlevel(doctype: str, fieldname: str, permlevel: int):
     """Property Setter on (doctype, fieldname).permlevel.
 
+    Looks up the field in BOTH `tabDocField` (standard fields) and
+    `tabCustom Field` (admin- and app-added fields). HRMS for example
+    adds the Company "HR & Payroll" tab as a Custom Field — without
+    the Custom Field fallback, the existence check would fail and we'd
+    silently skip the permlevel bump.
+
     Skip if the field doesn't exist (defensive — field name typos in
     config.py shouldn't error the install). Skip if the field is
     mandatory (reqd=1) — raising permlevel on a reqd field breaks
@@ -78,8 +86,16 @@ def _set_field_permlevel(doctype: str, fieldname: str, permlevel: int):
         as_dict=True,
     )
     if not field_meta:
+        field_meta = frappe.db.get_value(
+            "Custom Field",
+            {"dt": doctype, "fieldname": fieldname},
+            ["fieldname", "reqd", "fieldtype"],
+            as_dict=True,
+        )
+    if not field_meta:
         frappe.logger("skyengpro").debug(
-            "field_perms: %s.%s not found — skipping", doctype, fieldname
+            "field_perms: %s.%s not found in DocField or Custom Field — skipping",
+            doctype, fieldname,
         )
         return
 

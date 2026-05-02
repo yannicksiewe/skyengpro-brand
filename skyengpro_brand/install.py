@@ -59,14 +59,24 @@ def after_install():
     from skyengpro_brand.user_lifecycle import ensure_user_employee_permissions
     ensure_user_employee_permissions()
 
-    # 3c. Wave 2: field-level permlevel gates on Project + Company.
-    #     Hides Costing/More Info tabs on Project and the
-    #     Accounts/Buying-Selling/Stock subtabs on Company from regular
-    #     users. Unlocked per-user via the Project Costing Viewer /
-    #     Project More Info Viewer custom roles (and Accounts User /
-    #     Sales User for Company subtabs).
+    # 3c. Wave 2: field-level permlevel gates on Project + Company +
+    #     Employee. Hides Costing/More Info tabs on Project, the
+    #     Accounts/Buying-Selling/Stock subtabs on Company, and the
+    #     Salary tab on Employee from regular users. Unlocked
+    #     per-user via custom roles (Project Costing Viewer / Project
+    #     More Info Viewer) or via existing core roles (Accounts User
+    #     / Sales User / HR User).
     from skyengpro_brand.field_perms import apply_field_permlevels
     apply_field_permlevels()
+
+    # 3d. Wave 2.5: Custom DocPerm write-strip. Permlevel hides salary
+    #     fields from the form but doesn't block writes via REST API
+    #     against permlevel-0 fields the role still has write on.
+    #     Force write=0 on (Employee, ESS) and (Company, every
+    #     non-finance role) so the only write surface left is what
+    #     the platform admin explicitly grants.
+    from skyengpro_brand.docperm_lockdown import apply_docperm_lockdowns
+    apply_docperm_lockdowns()
 
     # 4. Performance indexes for capacity-planning aggregations
     ensure_capacity_indexes()
@@ -89,6 +99,29 @@ def after_install():
     #    (project_query's owner clause covers them, but the canonical
     #    Users tab is empty — confusing UX).
     backfill_project_creator_membership()
+
+    # 9. Capacity Planning report — restrict to managers only. The
+    #    report ships with `Projects User` + `HR User` roles which
+    #    would let any regular employee see capacity for the whole
+    #    org (peer salaries are not in this report, but allocation
+    #    + utilization is sensitive scheduling info).
+    restrict_capacity_planning_report()
+
+    # 10. Project Setup doctypes + cross-project reports — strip
+    #     Projects User / Employee / ESS access. These reports
+    #     aggregate across ALL projects (not scoped per-user) and the
+    #     setup doctypes (Activity Type / Cost, Project Type, Project
+    #     Update) are admin-managed master data that regular users
+    #     shouldn't be editing.
+    restrict_project_setup_and_reports()
+
+    # 11. Project dashboard chart — gate the only chart on the
+    #     `Project` Dashboard (Project Summary, sourced from the
+    #     same-named report we just locked) so the dashboard
+    #     renders empty for non-managers. Frappe's Dashboard
+    #     doctype has no `roles` table, so chart-level gating is
+    #     the only handle.
+    restrict_project_dashboard_chart()
 
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
@@ -319,6 +352,199 @@ def ensure_capacity_indexes():
             frappe.logger("skyengpro").info("Created index %s on %s", name, table)
         except Exception as e:
             frappe.logger("skyengpro").warning("Index %s on %s failed: %s", name, table, e)
+
+
+def restrict_capacity_planning_report():
+    """Lock the Employee Capacity Planning report to manager roles.
+
+    The report ships with `System Manager`, `Projects Manager`,
+    `HR Manager`, **and** `Projects User` + `HR User` in its allowed
+    roles. The two `User` roles cover every regular employee — any
+    Projects User can run capacity-planning across the whole org.
+
+    Idempotent: re-runnable on every migrate. Removes only the two
+    over-permissive User roles; leaves any admin-added custom role
+    (e.g. a future "Capacity Planner" role) intact.
+    """
+    REPORT = "Employee Capacity Planning"
+    OVERREACHING_ROLES = ("Projects User", "HR User")
+
+    if not frappe.db.exists("Report", REPORT):
+        return
+
+    removed = frappe.db.sql(
+        """DELETE FROM `tabHas Role`
+           WHERE parent = %s
+             AND parenttype = 'Report'
+             AND role IN %s""",
+        (REPORT, OVERREACHING_ROLES),
+    )
+    if removed:
+        frappe.logger("skyengpro").info(
+            "restrict_capacity_planning_report: stripped Projects User + HR User"
+        )
+
+
+def restrict_project_setup_and_reports():
+    """Lock down Project setup masters + cross-project Reports.
+
+    Cross-project Reports (Project Summary, Daily/Timesheet Billing
+    Summary, Project wise Stock Tracking, Delayed Tasks Summary)
+    aggregate across the whole org — they don't honor our per-user
+    Project scope. Force their `tabHas Role` to exactly the canonical
+    manager set {Projects Manager, System Manager}.
+
+    Why "force the canonical set" instead of "just DELETE the bad
+    roles": Frappe's Report.is_permitted falls back to ref_doctype
+    permissions when `tabHas Role` is empty. Two of these reports
+    (Daily Timesheet Summary, Timesheet Billing Summary) ship with
+    only over-permissive roles — DELETE-only would empty the table
+    and the report would revert to "anyone with Timesheet read"
+    (i.e. every Projects User and Employee). Setting the canonical
+    set guarantees the gate stays in place.
+
+    Setup doctypes (Activity Type, Activity Cost, Project Type,
+    Project Update) are admin-managed master data — Projects User
+    shouldn't be able to add new activity types from the form.
+    Strip read/write/create/delete via Custom DocPerm override.
+
+    Idempotent: DELETE-then-INSERT for reports; Custom DocPerm
+    upsert for setup doctypes.
+    """
+    OVERREACHING_REPORTS = (
+        "Daily Timesheet Summary",
+        "Delayed Tasks Summary",
+        "Project Summary",
+        "Project wise Stock Tracking",
+        "Timesheet Billing Summary",
+    )
+    REPORT_CANONICAL_ROLES = ("Projects Manager", "System Manager")
+    SETUP_DOCTYPES = ("Activity Type", "Activity Cost", "Project Type", "Project Update")
+    SETUP_ROLES_TO_LOCK = ("Projects User", "Employee", "Employee Self Service")
+
+    # 1) Force each cross-project Report's role list to exactly the
+    #    canonical manager set. Wipe first, then ensure each role row
+    #    exists. This closes the empty-roles fallback hole.
+    #
+    #    Direct SQL INSERT instead of `frappe.get_doc().insert()`:
+    #    Frappe's Has Role validate dedupes on (parent, role) ignoring
+    #    parenttype. We add a Dashboard Chart Has Role row with
+    #    parent='Project Summary' elsewhere — the matching Report
+    #    row collides at validate time and the insert silently fails.
+    #    SQL bypasses that check; the parent+parenttype+parentfield
+    #    uniquely identifies the row in the database.
+    for report in OVERREACHING_REPORTS:
+        if not frappe.db.exists("Report", report):
+            continue
+        frappe.db.sql(
+            """DELETE FROM `tabHas Role`
+               WHERE parenttype = 'Report' AND parent = %s""",
+            (report,),
+        )
+        for role in REPORT_CANONICAL_ROLES:
+            if not frappe.db.exists("Role", role):
+                continue
+            try:
+                frappe.db.sql(
+                    """INSERT INTO `tabHas Role`
+                         (name, creation, modified, modified_by, owner,
+                          docstatus, idx, role, parent, parenttype,
+                          parentfield)
+                       VALUES
+                         (UUID(), NOW(), NOW(), 'Administrator',
+                          'Administrator', 0, 1, %s, %s, 'Report',
+                          'roles')""",
+                    (role, report),
+                )
+            except Exception:
+                frappe.logger("skyengpro").exception(
+                    "restrict_project_setup_and_reports: Has Role insert failed for %s/%s",
+                    report, role,
+                )
+
+    # 2) Lock setup doctypes via Custom DocPerm override (read=0, all
+    #    operations 0). Mirrors docperm_lockdown's force-no-write
+    #    pattern but also strips read.
+    for dt in SETUP_DOCTYPES:
+        if not frappe.db.exists("DocType", dt):
+            continue
+        for role in SETUP_ROLES_TO_LOCK:
+            if not frappe.db.exists("Role", role):
+                continue
+            existing = frappe.db.get_value(
+                "Custom DocPerm",
+                {"parent": dt, "role": role, "permlevel": 0},
+                "name",
+            )
+            if existing:
+                for flag in ("read", "write", "create", "delete"):
+                    frappe.db.set_value(
+                        "Custom DocPerm", existing, flag, 0,
+                        update_modified=False,
+                    )
+            else:
+                try:
+                    frappe.get_doc({
+                        "doctype":     "Custom DocPerm",
+                        "parent":      dt,
+                        "parenttype":  "DocType",
+                        "parentfield": "permissions",
+                        "role":        role,
+                        "permlevel":   0,
+                        "read":        0,
+                        "write":       0,
+                        "create":      0,
+                        "delete":      0,
+                        "if_owner":    0,
+                    }).insert(ignore_permissions=True)
+                except Exception:
+                    frappe.logger("skyengpro").exception(
+                        "restrict_project_setup_and_reports: failed for %s/%s",
+                        dt, role,
+                    )
+    frappe.db.commit()
+
+
+def restrict_project_dashboard_chart():
+    """Gate the `Project Summary` Dashboard Chart to Projects Manager.
+
+    The `Project` Dashboard (module=Projects) contains a single
+    chart, `Project Summary`, sourced from the like-named Report.
+    Frappe's Dashboard doctype has no `roles` child table — so
+    even though the report is locked, the dashboard URL itself
+    is reachable from the module sidebar. Adding roles to the
+    chart makes it disappear for users without those roles, so
+    the dashboard renders empty.
+
+    Idempotent: skipped if the role row already exists.
+    """
+    CHART = "Project Summary"
+    ROLES = ("Projects Manager",)
+
+    if not frappe.db.exists("Dashboard Chart", CHART):
+        return
+
+    for role in ROLES:
+        if not frappe.db.exists("Role", role):
+            continue
+        existing = frappe.db.exists(
+            "Has Role",
+            {"parent": CHART, "parenttype": "Dashboard Chart", "role": role},
+        )
+        if existing:
+            continue
+        try:
+            frappe.get_doc({
+                "doctype":     "Has Role",
+                "parent":      CHART,
+                "parenttype":  "Dashboard Chart",
+                "parentfield": "roles",
+                "role":        role,
+            }).insert(ignore_permissions=True)
+        except Exception:
+            frappe.logger("skyengpro").exception(
+                "restrict_project_dashboard_chart: failed for role %s", role,
+            )
 
 
 def backfill_project_creator_membership():

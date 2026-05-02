@@ -123,6 +123,51 @@ def ensure_user_employee_permissions():
 # doc_event: Employee.after_insert / .on_update
 # ─────────────────────────────────────────────────────────────
 
+def block_self_edit_for_non_admins(doc, method=None):
+    """User.validate — refuse self-edit (or self-elevation) by users
+    without System Manager role.
+
+    Frappe core has a hardcoded self-permission rule on the User
+    doctype: `User.has_permission` returns True when
+    `doc.name == frappe.session.user`, regardless of DocPerm. That
+    means every authenticated user can save changes to her own User
+    record (first_name, last_name, username, time_zone, etc.) —
+    including identity-affecting fields. We block that at the
+    validate layer.
+
+    Allowed paths (NOT blocked):
+      - Administrator + any user with System Manager role: full edit.
+      - Brand-new user (`doc.is_new()`) — needed because the
+        after_insert lifecycle path saves the doc once before any
+        field-level guards apply.
+      - Password resets and user-driven self-service flows that go
+        through dedicated whitelisted methods
+        (`frappe.core.doctype.user.user.update_password`, etc.) —
+        those don't fire this validate hook because they bypass the
+        full Document.save path.
+
+    Blocked path:
+      - Logged-in non-admin user clicks Save on her own User form.
+        Frappe shows a permission error and the doc is not persisted.
+    """
+    if doc.is_new():
+        return
+    if frappe.session.user in ("Administrator", "Guest"):
+        return
+    if "System Manager" in (frappe.get_roles() or []):
+        return
+    if doc.name != frappe.session.user:
+        # Editing someone else — DocPerm gates that. The block here
+        # is specifically for the self-edit hardcoded bypass.
+        return
+    frappe.throw(
+        "You cannot edit your own User profile. "
+        "Ask a platform admin (System Manager) to make changes on "
+        "your behalf.",
+        title="Self-edit not allowed",
+    )
+
+
 def on_employee_save(doc, method=None):
     """Employee.after_insert / on_update — keep the User → Employee
     permission in sync when HR links/unlinks a User from an Employee.

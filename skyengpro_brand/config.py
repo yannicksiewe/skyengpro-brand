@@ -475,9 +475,122 @@ COMPANY_FIELD_PERMLEVELS = {
             "monthly_sales_target",
             "column_break_goals",
             "total_monthly_sales",
+            # Tab Break — hides the whole Buying and Selling tab header.
+            # Without gating the Tab Break itself, the tab still renders
+            # (empty) when its child sections are hidden by permlevel.
+            "buying_and_selling_tab",
         ],
     },
 }
+
+# Wave 2.5 additions — gate the Tab Break fields themselves so the tab
+# headers disappear, not just the inner sections. Council finding: in
+# v16, hiding inner fields leaves an empty tab header visible until
+# the Tab Break field gets permlevel >0 too.
+COMPANY_FIELD_PERMLEVELS["Accounts User"][4].extend([
+    "accounts_tab",
+    "accounts_closing_tab",
+    "stock_tab",
+    "dashboard_tab",
+])
+
+# HR & Payroll tab on Company is added by HRMS as Custom Fields, not
+# standard DocFields. Gate at permlevel 6 (same level we use for the
+# Employee Salary tab) so HR User unlocks BOTH tabs with the one role.
+# Fields involved (all Custom Fields):
+#   - hr_and_payroll_tab           (Tab Break)
+#   - hr_settings_section          (Section Break inside the tab)
+#   - default_payroll_payable_account  (Link)
+COMPANY_FIELD_PERMLEVELS["HR User"] = {
+    6: [
+        "hr_and_payroll_tab",
+        "hr_settings_section",
+        "default_payroll_payable_account",
+    ],
+}
+
+
+# Employee fields — hide the Salary tab from Employee Self Service.
+# Tab Break `salary_information` gates the whole tab header. The
+# inner field gates (ctc, salary_currency, etc.) are defence-in-depth
+# in case a custom view bypasses the Tab Break check.
+EMPLOYEE_FIELD_PERMLEVELS = {
+    "HR User": {
+        6: [
+            "salary_information",        # Tab Break — hides "Salary" tab
+            "ctc",
+            "salary_currency",
+            "salary_mode",
+            "bank_details_section",      # Section Break inside Salary tab
+            "bank_name",
+            "bank_ac_no",
+            "iban",
+        ],
+    },
+}
+
+
+# ─────────────────────────────────────────────────────────────
+# Wave 2.5: Custom DocPerm write-strip
+#
+# Each (doctype, role) tuple gets a Custom DocPerm row that mirrors
+# the role's read/if_owner flags but forces write=0, create=0,
+# delete=0. Used to plug write leaks where a role currently has
+# write=1 it shouldn't (e.g. Employee Self Service writing on
+# Employee, which lets a user edit her own salary).
+#
+# Implementation pattern (from architect's brief): NEVER delete the
+# standard DocPerm row — bench migrate recreates it. Frappe resolves
+# perms by replacing standard with Custom DocPerm whenever ANY Custom
+# DocPerm exists for (parent, role). We mirror the standard row's
+# read flags and only flip write/create/delete to 0.
+# ─────────────────────────────────────────────────────────────
+DOCPERM_WRITE_LOCKDOWN = [
+    # Plug the salary-self-edit leak — ESS users can read their own
+    # Employee record (if_owner already 0 in the existing Custom row,
+    # but User Permission still scopes them to themselves) but cannot
+    # edit ANY field. Salary fields are also gated at permlevel 6.
+    ("Employee", "Employee Self Service"),
+
+    # Lock Company write for every non-finance / non-admin role that
+    # might ship with default write. Keep write only on Accounts
+    # Manager and System Manager.
+    ("Company",  "Employee"),
+    ("Company",  "Employee Self Service"),
+    ("Company",  "HR User"),
+    ("Company",  "HR Manager"),
+    ("Company",  "Sales User"),
+    ("Company",  "Sales Manager"),
+    ("Company",  "Purchase User"),
+    ("Company",  "Purchase Manager"),
+    ("Company",  "Stock User"),
+    ("Company",  "Stock Manager"),
+    ("Company",  "Projects User"),
+    ("Company",  "Projects Manager"),
+    ("Company",  "Accounts User"),
+
+    # Address + Contact: stock Frappe grants the implicit "All" role
+    # write+create on these doctypes — every user can create a new
+    # Address linked to any Company. Strip "All" plus all HR/Projects
+    # roles. Sales/Purchase/Maintenance/Accounts retain their own
+    # write rows from standard DocPerm, which is correct (they need
+    # to add Customer/Supplier/Vendor addresses).
+    ("Address",  "All"),
+    ("Address",  "Employee"),
+    ("Address",  "Employee Self Service"),
+    ("Address",  "HR User"),
+    ("Address",  "HR Manager"),
+    ("Address",  "Projects User"),
+    ("Address",  "Projects Manager"),
+
+    ("Contact",  "All"),
+    ("Contact",  "Employee"),
+    ("Contact",  "Employee Self Service"),
+    ("Contact",  "HR User"),
+    ("Contact",  "HR Manager"),
+    ("Contact",  "Projects User"),
+    ("Contact",  "Projects Manager"),
+]
 
 
 # ─────────────────────────────────────────────────────────────

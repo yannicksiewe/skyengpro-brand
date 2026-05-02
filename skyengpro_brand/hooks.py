@@ -55,6 +55,10 @@ has_permission = {
     "Project":          "skyengpro_brand.tenant_scope.project_has_perm",
     "Project User":     "skyengpro_brand.tenant_scope.project_user_has_perm",
     "Task":             "skyengpro_brand.tenant_scope.task_has_perm",
+    # Per-dashboard role gates. Hides the auto-injected workspace
+    # sidebar entry for non-managers (the "Dashboard" item under
+    # Projects). See dashboard_perm.DASHBOARD_ROLE_GATES.
+    "Dashboard":        "skyengpro_brand.dashboard_perm.dashboard_has_perm",
 }
 permission_query_conditions = {
     "User":             "skyengpro_brand.user_permission.user_query_conditions",
@@ -87,7 +91,14 @@ doc_events = {
     # Auto-attach default Module Profile + Employee/ESS roles on new
     # System User creation. Runs synchronously inside the User insert
     # so first-login already gets a shaped sidebar.
-    "User":      {"after_insert": "skyengpro_brand.user_lifecycle.on_user_after_insert"},
+    "User":      {
+        "after_insert": "skyengpro_brand.user_lifecycle.on_user_after_insert",
+        # Frappe core has a hardcoded self-permission on User: every
+        # authenticated user can save changes to their own User record
+        # regardless of DocPerm. This validate hook closes that gap by
+        # refusing self-edit for any user without System Manager.
+        "validate":     "skyengpro_brand.user_lifecycle.block_self_edit_for_non_admins",
+    },
     # Keep User -> Employee User Permission (Salary Slip leak guard)
     # in sync when HR links/unlinks a User from an Employee.
     "Employee":  {
