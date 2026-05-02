@@ -25,10 +25,16 @@ request fires. Idempotent and a no-op when HRMS isn't installed.
 import frappe
 
 
+# Stash the original here so the wrapper can call it without falling
+# into infinite recursion. apply_patch() populates this on first run
+# from the unpatched module attribute.
+_orig_check_app_permission = None
+
+
 def _patched_check_app_permission():
     """Frappe HR app-card permission gate.
 
-    Original behaviour:
+    Original behaviour (delegated to _orig_check_app_permission):
       - True for Administrator
       - False for Website Users
       - True if user has read on Employee (i.e. every linked employee)
@@ -40,14 +46,11 @@ def _patched_check_app_permission():
     """
     if frappe.session.user == "Administrator":
         return True
-    try:
-        from hrms.hr.utils import check_app_permission as _orig
-    except ImportError:
-        return True
 
     # Run the original gate first — preserves Website User block etc.
-    if not _orig():
-        return False
+    if _orig_check_app_permission is not None:
+        if not _orig_check_app_permission():
+            return False
 
     # Module-block gate: hide the card when both HR + Payroll are blocked.
     blocked = set(
@@ -67,8 +70,17 @@ def _patched_check_app_permission():
 
 
 def apply_patch():
+    global _orig_check_app_permission
     try:
         import hrms.hr.utils as _hrms_utils
     except ImportError:
         return
+    # Idempotent: if we've already patched, the module attr equals our
+    # wrapper — don't capture our wrapper as the "original" or we end
+    # up with infinite recursion. _orig_check_app_permission is
+    # populated only on the first apply.
+    if _hrms_utils.check_app_permission is _patched_check_app_permission:
+        return
+    if _orig_check_app_permission is None:
+        _orig_check_app_permission = _hrms_utils.check_app_permission
     _hrms_utils.check_app_permission = _patched_check_app_permission
