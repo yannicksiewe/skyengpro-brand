@@ -60,6 +60,14 @@ has_permission = {
     # Projects). See dashboard_perm.DASHBOARD_ROLE_GATES.
     "Dashboard":        "skyengpro_brand.dashboard_perm.dashboard_has_perm",
 }
+
+# Override the Workspace Sidebar controller to route dashboard sidebar
+# items through has_permission. Without this override Frappe shows
+# every dashboard item to every user (hardcoded `return True`), which
+# negates the Dashboard has_permission hook above.
+override_doctype_class = {
+    "Workspace Sidebar": "skyengpro_brand.workspace_sidebar_override.PatchedWorkspaceSidebar",
+}
 permission_query_conditions = {
     "User":             "skyengpro_brand.user_permission.user_query_conditions",
     "Company":          "skyengpro_brand.tenant_scope.company_query",
