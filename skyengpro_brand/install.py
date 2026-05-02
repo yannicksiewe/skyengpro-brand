@@ -123,6 +123,14 @@ def after_install():
     #     the only handle.
     restrict_project_dashboard_chart()
 
+    # 12. Self Service workspace — dedicated ESS entry point with
+    #     Leave Application, Salary Slip, Expense Claim shortcuts.
+    #     Lives under module=Setup so it's visible to every user
+    #     regardless of which Module Profile gates HR / Payroll.
+    #     Also cleans up the same shortcuts from Home (where an
+    #     earlier release placed them).
+    ensure_self_service_workspace()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 
@@ -322,6 +330,166 @@ def ensure_capacity_workspace_shortcuts():
             ws.content = _json.dumps(blocks)
             ws.save(ignore_permissions=True)
             frappe.logger("skyengpro").info("Updated shortcuts on workspace %s", ws_name)
+
+
+SELF_SERVICE_WORKSPACE = "Self Service"
+SELF_SERVICE_SHORTCUTS = [
+    # (link_to, label, doc_view, color)
+    ("Leave Application", "Apply for Leave",      "New",  "Green"),
+    ("Salary Slip",       "My Salary Slips",      "List", "Blue"),
+    ("Expense Claim",     "Submit Expense",       "New",  "Orange"),
+]
+
+
+def ensure_self_service_workspace():
+    """Create a public 'Self Service' workspace with three ESS
+    shortcuts: Apply for Leave / My Salary Slips / Submit Expense.
+
+    Why a dedicated workspace and not just shortcuts on Home: HR +
+    Payroll modules are blocked at the Module Profile level so the
+    HR / Payroll workspace sidebars are hidden, but the Employee
+    role still grants if_owner DocPerm on Leave Application /
+    Salary Slip / Expense Claim. A dedicated 'Self Service'
+    workspace under the (unblocked) `Setup` module gives users a
+    clear, isolated entry point without surfacing any of the rest
+    of the HR app's surface area.
+
+    `doc_view=New` opens the create form directly; `List` opens a
+    filtered list (User Permission scopes Salary Slip to the user's
+    own Employee record).
+
+    Idempotent: workspace is created on first run; subsequent runs
+    upsert any missing shortcut rows + content blocks. If the
+    workspace was created earlier and an admin edited it in the UI,
+    we only ADD missing pieces — we don't blow away their layout.
+
+    Side-effect: removes the same shortcuts from the Home workspace
+    if they were added there by an earlier release.
+    """
+    import json as _json
+
+    # 1) Cleanup: remove the ESS shortcuts from Home (placed there
+    #    by an earlier release before we settled on a dedicated
+    #    workspace). Idempotent — does nothing if Home is already
+    #    clean.
+    _purge_home_ess_shortcuts()
+
+    # 2) Make sure the workspace exists.
+    if not frappe.db.exists("Workspace", SELF_SERVICE_WORKSPACE):
+        ws = frappe.new_doc("Workspace")
+        ws.name = SELF_SERVICE_WORKSPACE
+        ws.label = SELF_SERVICE_WORKSPACE
+        ws.title = SELF_SERVICE_WORKSPACE
+        # Setup is in the always-on module set (BASE_MODULES) so
+        # every Module Profile keeps it unblocked. The workspace is
+        # therefore visible in every user's sidebar regardless of
+        # which other modules are gated.
+        ws.module = "Setup"
+        ws.public = 1
+        ws.icon = "users"
+        ws.content = "[]"
+        ws.insert(ignore_permissions=True)
+
+    ws = frappe.get_doc("Workspace", SELF_SERVICE_WORKSPACE)
+    try:
+        blocks = _json.loads(ws.content or "[]")
+    except ValueError:
+        blocks = []
+    changed = False
+
+    # 3) Header block for the page (only inserted once).
+    has_header = any(b.get("type") == "header" for b in blocks)
+    if not has_header:
+        blocks.insert(0, {
+            "type": "header",
+            "data": {
+                "text": "<span class=\"h4\"><b>Self Service</b></span>",
+                "col": 12,
+            },
+        })
+        changed = True
+
+    # 4) Add each shortcut child row + content block.
+    for link_to, label, doc_view, color in SELF_SERVICE_SHORTCUTS:
+        if not frappe.db.exists("DocType", link_to):
+            continue
+
+        has_row = any(
+            (s.type == "DocType" and s.link_to == link_to)
+            for s in (ws.shortcuts or [])
+        )
+        if not has_row:
+            ws.append("shortcuts", {
+                "type":     "DocType",
+                "link_to":  link_to,
+                "label":    label,
+                "doc_view": doc_view,
+                "color":    color,
+            })
+            changed = True
+
+        already_rendered = any(
+            b.get("type") == "shortcut" and b.get("data", {}).get("shortcut_name") == label
+            for b in blocks
+        )
+        if not already_rendered:
+            blocks.append({
+                "type": "shortcut",
+                "data": {"shortcut_name": label, "col": 4},
+            })
+            changed = True
+
+    if changed:
+        ws.content = _json.dumps(blocks)
+        ws.save(ignore_permissions=True)
+        frappe.logger("skyengpro").info(
+            "ensure_self_service_workspace: synced Self Service workspace",
+        )
+
+
+def _purge_home_ess_shortcuts():
+    """Remove the ESS shortcut rows + content blocks from the Home
+    workspace. They were placed there by an earlier release before
+    we settled on a dedicated 'Self Service' workspace. Idempotent.
+    """
+    import json as _json
+
+    if not frappe.db.exists("Workspace", "Home"):
+        return
+    ws = frappe.get_doc("Workspace", "Home")
+    ess_labels = {label for _link, label, _dv, _c in SELF_SERVICE_SHORTCUTS}
+    # Also catch the older "Submit Expense Claim" label.
+    ess_labels.add("Submit Expense Claim")
+
+    # Drop matching shortcut child rows
+    keep_shortcuts = [
+        s for s in (ws.shortcuts or []) if s.label not in ess_labels
+    ]
+    removed_rows = len(ws.shortcuts or []) - len(keep_shortcuts)
+    if removed_rows:
+        ws.shortcuts = keep_shortcuts
+
+    # Drop matching content blocks
+    try:
+        blocks = _json.loads(ws.content or "[]")
+    except ValueError:
+        blocks = []
+    new_blocks = [
+        b for b in blocks
+        if not (
+            b.get("type") == "shortcut"
+            and b.get("data", {}).get("shortcut_name") in ess_labels
+        )
+    ]
+    blocks_changed = len(blocks) != len(new_blocks)
+
+    if removed_rows or blocks_changed:
+        ws.content = _json.dumps(new_blocks)
+        ws.save(ignore_permissions=True)
+        frappe.logger("skyengpro").info(
+            "_purge_home_ess_shortcuts: removed %d ESS shortcut row(s) + %d block(s) from Home",
+            removed_rows, len(blocks) - len(new_blocks),
+        )
 
 
 def ensure_capacity_indexes():

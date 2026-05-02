@@ -84,6 +84,37 @@ def boot_session(bootinfo):
         frappe.logger("skyengpro").exception("brand boot_session failed; falling back to default")
         bootinfo.brand = _build_brand_payload(DEFAULT_BRAND, _safe_fallback=True)
 
+    # /desk apps grid — drop apps that have no workspaces this user
+    # can access. Frappe's stock boot adds an entry for every
+    # installed app even when the user can't reach any of its
+    # workspaces, so the "Frappe HR" / "Accounting" cards keep
+    # showing for users who have HR / Accounts modules blocked.
+    try:
+        _filter_empty_app_data(bootinfo)
+    except Exception:
+        frappe.logger("skyengpro").exception("filter_empty_app_data failed")
+
+
+def _filter_empty_app_data(bootinfo):
+    """Drop bootinfo.app_data entries with no allowed workspaces.
+
+    `bootinfo.app_data` is built by frappe.boot.get_bootinfo: for
+    each installed app, it joins Workspace -> Module Def -> app and
+    intersects with the user's allowed_pages. Apps whose workspaces
+    are all blocked end up with an empty `workspaces` list, but the
+    entry is still added to app_data — and rendered as an app card
+    on /desk. We filter those out so the apps grid only shows
+    cards the user can actually click into.
+
+    Administrator is exempted so the platform admin sees every app.
+    """
+    if frappe.session.user == "Administrator":
+        return
+    app_data = getattr(bootinfo, "app_data", None)
+    if not app_data:
+        return
+    bootinfo.app_data = [a for a in app_data if a.get("workspaces")]
+
 
 def _resolve_brand_slug() -> str:
     """Best-guess of which brand to show this user.
