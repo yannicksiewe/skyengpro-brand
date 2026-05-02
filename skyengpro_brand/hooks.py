@@ -23,6 +23,24 @@ web_include_js = "/assets/skyengpro_brand/js/brand_loader.js"
 # Resolve the user's tenant brand at boot and stuff it into bootinfo.brand
 boot_session = "skyengpro_brand.theme.boot_session"
 
+# Self Service app card on /desk apps grid. Frappe v16's apps grid is
+# populated by frappe.apps.get_apps() which iterates every installed
+# app's `add_to_apps_screen` hook entries. Adding this entry makes
+# Self Service render as a top-level card alongside Framework /
+# Organization / Accounting / Projects, with a one-click route into
+# the dedicated workspace (Apply for Leave / My Salary Slips /
+# Submit Expense). has_permission returns False for Website Users
+# only — Self Service is meant for any desk-bound user.
+add_to_apps_screen = [
+    {
+        "name":           "skyengpro_brand",
+        "logo":           "/assets/skyengpro_brand/brand/skyengpro/icon_mark_512px.png",
+        "title":          "Self Service",
+        "route":          "/desk/self-service",
+        "has_permission": "skyengpro_brand.dashboard_perm.self_service_app_has_permission",
+    }
+]
+
 # DocType-scoped client scripts. Frappe loads these on the matching form.
 doctype_js = {
     "Project": "public/js/project_form.js",

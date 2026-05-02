@@ -37,3 +37,21 @@ def dashboard_has_perm(doc, ptype="read", user=None):
         return True
     user_roles = set(frappe.get_roles(user or frappe.session.user))
     return bool(gates & user_roles)
+
+
+def self_service_app_has_permission():
+    """`add_to_apps_screen.has_permission` callback for the Self Service
+    app card on /desk.
+
+    Returns False for Website Users (they can't reach desk routes
+    anyway, so the card would just produce a 403 redirect). Returns
+    True for everyone else — Self Service holds Leave / Salary Slip
+    / Expense Claim shortcuts that every desk user should be able
+    to reach in one click.
+    """
+    if frappe.session.user == "Guest":
+        return False
+    user_type = frappe.get_cached_value("User", frappe.session.user, "user_type")
+    if user_type == "Website User":
+        return False
+    return True
