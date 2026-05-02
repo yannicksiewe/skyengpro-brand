@@ -86,10 +86,13 @@ PROFILES = {
             "Employee",
             "Projects User",
         ],
+        # HR / Frappe HR / Payroll are intentionally NOT in allowed_modules:
+        # the Frappe HR app card disappears from /desk and the HR / Payroll
+        # workspace sidebars are hidden. Doctype access (Leave Application,
+        # Salary Slip, Expense Claim) still works — Block Module gates
+        # workspaces, not DocPerm. The Self Service workspace surfaces
+        # those three actions explicitly.
         "allowed_modules": BASE_MODULES + [
-            "HR",
-            "Frappe HR",
-            "Payroll",
             "Projects",
         ],
         "company_scope": "own",
@@ -182,10 +185,10 @@ PROFILES = {
             "Employee",
             "Projects User",
         ],
+        # HR / Frappe HR / Payroll deliberately blocked — same rationale as
+        # SkyEngPro Employee. Self Service workspace covers Leave / Salary
+        # Slip / Expense Claim shortcuts.
         "allowed_modules": BASE_MODULES + [
-            "HR",
-            "Frappe HR",
-            "Payroll",
             "Projects",
             "Support",  # raise support tickets
         ],
@@ -200,10 +203,10 @@ PROFILES = {
             "Employee",
             "Projects User",
         ],
+        # HR / Frappe HR / Payroll deliberately blocked — Self Service
+        # workspace gives the user Leave / Salary Slip / Expense Claim
+        # without exposing the rest of the HR app surface.
         "allowed_modules": BASE_MODULES + [
-            "HR",
-            "Frappe HR",
-            "Payroll",
             "Projects",
         ],
         "company_scope": "own",
