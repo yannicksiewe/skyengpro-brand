@@ -156,6 +156,13 @@ def after_install():
     ensure_ess_read_doctype_perms()
     backfill_employee_self_service_role()
 
+    # 15. Bulletin de Paie — Cameroon HR custom fields on Employee + Company
+    #     (Numéro contribuable, Matricule CNPS, Catégorie, Niveau,
+    #     Conv. coll., Horaire mensuel) and the canonical Print Format
+    #     for Salary Slip. See install_payroll.py.
+    from skyengpro_brand.install_payroll import setup_payroll
+    setup_payroll()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 

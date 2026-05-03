@@ -135,3 +135,24 @@ doc_events = {
 
 after_install = "skyengpro_brand.install.after_install"
 after_migrate = "skyengpro_brand.install.after_install"
+
+# Bulletin de Paie helpers — expose payroll_helpers functions inside the
+# print-format Jinja sandbox. Each path's last segment becomes the callable
+# name in the template (e.g. component_code(name)).
+jinja = {
+    "methods": [
+        "skyengpro_brand.payroll_helpers.component_code",
+        "skyengpro_brand.payroll_helpers.component_label",
+        "skyengpro_brand.payroll_helpers.is_employer_component",
+        "skyengpro_brand.payroll_helpers.split_deductions",
+        "skyengpro_brand.payroll_helpers.anciennete",
+        "skyengpro_brand.payroll_helpers.ytd_totals",
+        "skyengpro_brand.payroll_helpers.employee_field",
+        "skyengpro_brand.payroll_helpers.company_field",
+        "skyengpro_brand.payroll_helpers.total_imposable",
+        "skyengpro_brand.payroll_helpers.total_cotisation",
+        "skyengpro_brand.payroll_helpers.format_taux",
+        "skyengpro_brand.payroll_helpers.format_base",
+        "skyengpro_brand.payroll_helpers.brand_image_data_uri",
+    ],
+}
