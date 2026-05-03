@@ -105,6 +105,17 @@ def boot_session(bootinfo):
     except Exception:
         frappe.logger("skyengpro").exception("filter_framework_desktop_icons failed")
 
+    # Workspace sidebars — drop the per-workspace "Setup" Section Break
+    # group and the "Settings" Link entry for users without a manager
+    # role. Frappe's `get_sidebar_items` (frappe/boot.py:543) hardcodes
+    # `or item.type == "Section Break"` so Section Breaks bypass
+    # `is_item_allowed` entirely, meaning we cannot gate the Setup
+    # group via the WorkspaceSidebar override — must post-filter.
+    try:
+        _filter_admin_sidebar_items(bootinfo)
+    except Exception:
+        frappe.logger("skyengpro").exception("filter_admin_sidebar_items failed")
+
 
 # Framework children that an Employee/regular user is allowed to see in the
 # Framework launcher popup. Anything else with parent_icon='Framework' is
@@ -140,6 +151,74 @@ def _filter_framework_desktop_icons(bootinfo):
             and (i.get("label") if hasattr(i, "get") else getattr(i, "label", None)) not in FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE
         )
     ]
+
+
+# Roles that retain visibility on the per-workspace Setup section and
+# Settings link. Anyone with at least one of these (or System Manager,
+# or Administrator) keeps the admin sidebar entries. Regular employees
+# (Employee + Employee Self Service + Projects User) drop them, which
+# matches the underlying DocPerm posture — the admin doctypes behind
+# Setup/Settings (Expense Claim Type, Leave Type, HR Settings, etc.)
+# are role-gated anyway, so showing the entries to employees only
+# produces "Insufficient Permission" clicks.
+ADMIN_SIDEBAR_VISIBLE_ROLES = {
+    "System Manager",
+    "HR Manager",
+    "Accounts Manager",
+    "Sales Manager",
+    "Purchase Manager",
+    "Stock Manager",
+    "Manufacturing Manager",
+    "Projects Manager",
+    "Support Team",
+    "Website Manager",
+    "Workspace Manager",
+}
+
+# Sidebar item labels that get pruned. Setup is always a Section Break
+# (also drags the items under it until the next Section Break);
+# Settings is the link to <App> Settings. Both are admin-only.
+ADMIN_SIDEBAR_LABELS = {"Setup", "Settings"}
+
+
+def _filter_admin_sidebar_items(bootinfo):
+    """Drop "Setup" + "Settings" sidebar entries (and Setup's children)
+    from every workspace for non-manager users.
+
+    `bootinfo.workspace_sidebar_item` is a dict keyed by lowercase
+    workspace title; each value has an `items` list (flat). Setup is a
+    Section Break — items between it and the next Section Break belong
+    to the Setup group, so they're pruned together.
+    """
+    if frappe.session.user == "Administrator":
+        return
+    if ADMIN_SIDEBAR_VISIBLE_ROLES & set(frappe.get_roles()):
+        return
+    sidebar = getattr(bootinfo, "workspace_sidebar_item", None)
+    if not sidebar:
+        return
+    for ws_data in sidebar.values():
+        items = ws_data.get("items") if isinstance(ws_data, dict) else None
+        if not items:
+            continue
+        filtered = []
+        skip_until_next_section = False
+        for item in items:
+            label = (item.get("label") or "") if isinstance(item, dict) else ""
+            itype = (item.get("type") or "") if isinstance(item, dict) else ""
+            if itype == "Section Break":
+                if label in ADMIN_SIDEBAR_LABELS:
+                    skip_until_next_section = True
+                    continue
+                skip_until_next_section = False
+                filtered.append(item)
+            elif skip_until_next_section:
+                continue
+            elif label in ADMIN_SIDEBAR_LABELS:
+                continue
+            else:
+                filtered.append(item)
+        ws_data["items"] = filtered
 
 
 def _filter_empty_app_data(bootinfo):
