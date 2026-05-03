@@ -123,34 +123,57 @@ def boot_session(bootinfo):
 # kept (still useful to launch its allowed children).
 FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE = {"Automation", "System"}
 
+# Top-level /desk app cards (parent_icon empty) that should be role-gated.
+# Mapping label -> roles allowed to see the card. A user with at least one
+# of the listed roles (or System Manager / Administrator) keeps the card.
+# Cards not in this map are unaffected.
+TOP_LEVEL_ICON_ROLE_GATE = {
+    "Accounting": {"Accounts User", "Accounts Manager"},
+}
+
+
+def _icon_attr(icon, attr):
+    """Desktop Icon entries can be plain dicts or _dict — read either way."""
+    if hasattr(icon, "get"):
+        return icon.get(attr)
+    return getattr(icon, attr, None)
+
 
 def _filter_framework_desktop_icons(bootinfo):
     """Drop Framework sub-icons (Build / Users / Email / Integrations /
-    Printing / Data / Website) for non-System-Manager users.
+    Printing / Data / Website) for non-System-Manager users, and gate
+    top-level cards (e.g. Accounting) per TOP_LEVEL_ICON_ROLE_GATE.
 
-    These are Desktop Icon rows with `parent_icon='Framework'`. Frappe ships
-    them as `standard=1` and visible to every user — neither the Module
-    Profile nor the Workspace `roles` table gates them, because the popup
-    component (`sidebar_header.js:fetch_related_icons`) iterates
-    `frappe.boot.desktop_icons` directly.
+    Frappe ships these icons as `standard=1` and visible to every user —
+    neither the Module Profile nor the Workspace `roles` table gates them,
+    because the popup component (`sidebar_header.js:fetch_related_icons`)
+    iterates `frappe.boot.desktop_icons` directly.
 
-    We exempt System Manager and Administrator so platform admins still
-    see the full Framework launcher.
+    Administrator + System Manager always see everything.
     """
     if frappe.session.user == "Administrator":
         return
-    if "System Manager" in frappe.get_roles():
+    user_roles = set(frappe.get_roles())
+    if "System Manager" in user_roles:
         return
     icons = getattr(bootinfo, "desktop_icons", None)
     if not icons:
         return
-    bootinfo.desktop_icons = [
-        i for i in icons
-        if not (
-            (i.get("parent_icon") if hasattr(i, "get") else getattr(i, "parent_icon", None)) == "Framework"
-            and (i.get("label") if hasattr(i, "get") else getattr(i, "label", None)) not in FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE
-        )
-    ]
+
+    def keep(icon):
+        parent = _icon_attr(icon, "parent_icon")
+        label = _icon_attr(icon, "label")
+        # Framework launcher children — only Automation + System
+        if parent == "Framework" and label not in FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE:
+            return False
+        # Top-level cards in TOP_LEVEL_ICON_ROLE_GATE — require listed role.
+        # Frappe stores top-level icons with parent_icon either NULL or "".
+        if not parent and label in TOP_LEVEL_ICON_ROLE_GATE:
+            if not (TOP_LEVEL_ICON_ROLE_GATE[label] & user_roles):
+                return False
+        return True
+
+    bootinfo.desktop_icons = [i for i in icons if keep(i)]
 
 
 # Roles that retain visibility on the per-workspace Setup section and
