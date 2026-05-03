@@ -94,6 +94,53 @@ def boot_session(bootinfo):
     except Exception:
         frappe.logger("skyengpro").exception("filter_empty_app_data failed")
 
+    # Framework launcher popup — fed by bootinfo.desktop_icons.
+    # The Framework Desktop Icon has standard children Build / Users /
+    # Email / Integrations / etc. that are NOT gated by workspace roles
+    # or modules — they ship visible to every user. Filter them down
+    # for non-System-Manager users to only the categories employees
+    # actually need.
+    try:
+        _filter_framework_desktop_icons(bootinfo)
+    except Exception:
+        frappe.logger("skyengpro").exception("filter_framework_desktop_icons failed")
+
+
+# Framework children that an Employee/regular user is allowed to see in the
+# Framework launcher popup. Anything else with parent_icon='Framework' is
+# dropped for non-System-Manager users. The Framework parent icon itself is
+# kept (still useful to launch its allowed children).
+FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE = {"Automation", "System"}
+
+
+def _filter_framework_desktop_icons(bootinfo):
+    """Drop Framework sub-icons (Build / Users / Email / Integrations /
+    Printing / Data / Website) for non-System-Manager users.
+
+    These are Desktop Icon rows with `parent_icon='Framework'`. Frappe ships
+    them as `standard=1` and visible to every user — neither the Module
+    Profile nor the Workspace `roles` table gates them, because the popup
+    component (`sidebar_header.js:fetch_related_icons`) iterates
+    `frappe.boot.desktop_icons` directly.
+
+    We exempt System Manager and Administrator so platform admins still
+    see the full Framework launcher.
+    """
+    if frappe.session.user == "Administrator":
+        return
+    if "System Manager" in frappe.get_roles():
+        return
+    icons = getattr(bootinfo, "desktop_icons", None)
+    if not icons:
+        return
+    bootinfo.desktop_icons = [
+        i for i in icons
+        if not (
+            (i.get("parent_icon") if hasattr(i, "get") else getattr(i, "parent_icon", None)) == "Framework"
+            and (i.get("label") if hasattr(i, "get") else getattr(i, "label", None)) not in FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE
+        )
+    ]
+
 
 def _filter_empty_app_data(bootinfo):
     """Drop bootinfo.app_data entries with no allowed workspaces.

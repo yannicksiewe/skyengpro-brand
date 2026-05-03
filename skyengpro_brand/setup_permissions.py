@@ -38,24 +38,21 @@ def setup_desk_permissions():
 
 
 def setup_workspace_restrictions():
-    """Set role restrictions on workspaces so only authorized roles
-    see them in the sidebar.
+    """Reconcile workspace role restrictions to match WORKSPACE_RESTRICTIONS.
 
-    Implementation note — we INSERT directly into `tabHas Role` rather
-    than going through `frappe.get_doc("Workspace").save()`. ERPNext
-    ships several workspaces with broken state in the v16.x line
-    (Stock has stale Report links to removed doctypes like
-    "BOM Stock Report"; Helpdesk ships with a NULL `type` that the
-    schema marks mandatory). The Document layer validates EVERYTHING
-    on save — orphan links, missing mandatory, etc. — so our
-    role-only edit triggers unrelated failures and aborts the entire
-    install pipeline.
+    Authoritative — the listed roles become the EXACT set of roles on the
+    workspace. Anything previously allowed but not in the list is pruned.
+    This was previously additive-only, which left workspaces visible to
+    pre-existing roles (e.g. ERPNext ships "Build" and "Users" with no
+    role rows = visible to all; an additive add of System Manager doesn't
+    actually hide them from Employee). Authoritative reconciliation closes
+    that gap.
 
-    The Workspace `roles` child uses doctype "Has Role" (same as
-    User.roles), parent = workspace name, parenttype = "Workspace",
-    parentfield = "roles". Direct SQL is the only stable path here.
-
-    Idempotent: skip if a (workspace, role) row already exists.
+    Direct SQL (not Document layer) because ERPNext v16.x ships several
+    workspaces with broken state (orphan Report links, NULL mandatory
+    fields). Document.save() validates everything and aborts our edit on
+    unrelated errors. The Workspace `roles` child uses doctype "Has Role"
+    (same as User.roles): parent = workspace name, parenttype = Workspace.
     """
     for ws_name, roles in WORKSPACE_RESTRICTIONS.items():
         if not frappe.db.exists("Workspace", ws_name):
@@ -69,33 +66,36 @@ def setup_workspace_restrictions():
                 ws_name, as_dict=True,
             )
         }
+        allowed = {r for r in roles if frappe.db.exists("Role", r)}
+        to_remove = existing_roles - allowed
+        to_add = allowed - existing_roles
 
-        added = []
-        for role in roles:
-            if role in existing_roles:
-                continue
-            if not frappe.db.exists("Role", role):
-                continue
+        if to_remove:
+            placeholders = ",".join(["%s"] * len(to_remove))
+            frappe.db.sql(
+                f"""DELETE FROM `tabHas Role`
+                    WHERE parent = %s AND parenttype = 'Workspace'
+                      AND role IN ({placeholders})""",
+                (ws_name, *to_remove),
+            )
+
+        for i, role in enumerate(to_add, start=len(existing_roles - to_remove) + 1):
             frappe.db.sql(
                 """INSERT INTO `tabHas Role`
                    (name, parent, parenttype, parentfield, idx, role,
                     creation, modified, modified_by, owner, docstatus)
                    VALUES (%s, %s, 'Workspace', 'roles', %s, %s,
                            NOW(), NOW(), 'Administrator', 'Administrator', 0)""",
-                (
-                    frappe.generate_hash(length=10),
-                    ws_name,
-                    len(existing_roles) + len(added) + 1,
-                    role,
-                ),
+                (frappe.generate_hash(length=10), ws_name, i, role),
             )
-            added.append(role)
 
-        if added:
+        if to_remove or to_add:
             frappe.logger("skyengpro").info(
-                "Workspace '%s' role-restricted: added %s (now: %s)",
-                ws_name, ", ".join(added),
-                ", ".join(sorted(existing_roles | set(added))),
+                "Workspace '%s' reconciled: removed=%s added=%s final=%s",
+                ws_name,
+                ", ".join(sorted(to_remove)) or "-",
+                ", ".join(sorted(to_add)) or "-",
+                ", ".join(sorted(allowed)),
             )
 
     frappe.db.commit()
