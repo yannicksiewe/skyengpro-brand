@@ -144,6 +144,11 @@ def _filter_framework_desktop_icons(bootinfo):
     Printing / Data / Website) for non-System-Manager users, and gate
     top-level cards (e.g. Accounting) per TOP_LEVEL_ICON_ROLE_GATE.
 
+    When a top-level card is dropped, its children also drop — Frappe v16's
+    apps grid orphans children (`parent_icon=<dropped label>`) and renders
+    them inline at top-level, defeating the purpose of hiding the parent.
+    The cascade rule below keeps the apps grid clean.
+
     Frappe ships these icons as `standard=1` and visible to every user —
     neither the Module Profile nor the Workspace `roles` table gates them,
     because the popup component (`sidebar_header.js:fetch_related_icons`)
@@ -160,17 +165,28 @@ def _filter_framework_desktop_icons(bootinfo):
     if not icons:
         return
 
+    # First pass: figure out which top-level cards the user is dropping
+    # so we can cascade to their children.
+    dropped_parents = {
+        _icon_attr(i, "label")
+        for i in icons
+        if not _icon_attr(i, "parent_icon")  # top-level (parent_icon NULL or "")
+        and _icon_attr(i, "label") in TOP_LEVEL_ICON_ROLE_GATE
+        and not (TOP_LEVEL_ICON_ROLE_GATE[_icon_attr(i, "label")] & user_roles)
+    }
+
     def keep(icon):
         parent = _icon_attr(icon, "parent_icon")
         label = _icon_attr(icon, "label")
         # Framework launcher children — only Automation + System
         if parent == "Framework" and label not in FRAMEWORK_ICONS_VISIBLE_TO_EMPLOYEE:
             return False
-        # Top-level cards in TOP_LEVEL_ICON_ROLE_GATE — require listed role.
-        # Frappe stores top-level icons with parent_icon either NULL or "".
-        if not parent and label in TOP_LEVEL_ICON_ROLE_GATE:
-            if not (TOP_LEVEL_ICON_ROLE_GATE[label] & user_roles):
-                return False
+        # Cascade: drop any icon whose parent has been dropped.
+        if parent and parent in dropped_parents:
+            return False
+        # Top-level cards in TOP_LEVEL_ICON_ROLE_GATE — drop the card itself.
+        if not parent and label in dropped_parents:
+            return False
         return True
 
     bootinfo.desktop_icons = [i for i in icons if keep(i)]
