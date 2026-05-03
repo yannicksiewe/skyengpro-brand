@@ -137,6 +137,25 @@ def after_install():
     #     add_to_apps_screen hook.
     ensure_self_service_desktop_icon()
 
+    # 14. ESS workflow plumbing — all the bits that make Apply for
+    #     Leave / Submit Expense / Employee Advance actually work
+    #     for a regular employee:
+    #       a. HR Settings: allow employees to file backdated leave
+    #          (without this, only Administrator can submit a leave
+    #          for any past date — useless for sick-leave workflows)
+    #       b. ensure read=1 on Custom DocPerm for ESS on
+    #          Account/Currency/Mode of Payment/Cost Center so the
+    #          form autocomplete doesn't die with "Insufficient
+    #          Permission for X"
+    #       c. Backfill Employee Self Service role onto every user
+    #          that already has Employee role — DEFAULT_USER_ROLES
+    #          covers new users via on_user_after_insert, but
+    #          existing users created before this release are
+    #          missing it.
+    ensure_hr_settings_allow_backdated_leave()
+    ensure_ess_read_doctype_perms()
+    backfill_employee_self_service_role()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 
@@ -388,6 +407,128 @@ def ensure_self_service_desktop_icon():
         frappe.logger("skyengpro").exception(
             "ensure_self_service_desktop_icon: insert failed"
         )
+
+
+def ensure_hr_settings_allow_backdated_leave():
+    """Set HR Settings.restrict_backdated_leave_application = 0.
+
+    Out of the box HRMS restricts backdated leave to Administrator.
+    For us employees self-file leave (sick days, emergency leave
+    applied retroactively), so we relax the gate. Idempotent.
+    """
+    try:
+        hr = frappe.get_single("HR Settings")
+        if hr.get("restrict_backdated_leave_application"):
+            hr.restrict_backdated_leave_application = 0
+            hr.save(ignore_permissions=True)
+            frappe.logger("skyengpro").info(
+                "HR Settings: restrict_backdated_leave_application -> 0"
+            )
+    except Exception:
+        frappe.logger("skyengpro").exception(
+            "ensure_hr_settings_allow_backdated_leave failed"
+        )
+
+
+def ensure_ess_read_doctype_perms():
+    """Force read=1 on Custom DocPerm rows for Employee Self Service
+    on Account / Currency / Mode of Payment / Cost Center.
+
+    These doctypes back the autocomplete fields on Expense Claim and
+    Employee Advance. If a Custom DocPerm exists with read=0 (which
+    is what we observe in this site post-rollouts) the form raises
+    `Insufficient Permission for X`. Force read=1 idempotently — if
+    no Custom DocPerm exists at permlevel 0 yet, insert a minimal
+    read-only row so the gate is explicit.
+    """
+    from skyengpro_brand.config import ESS_READ_DOCTYPES
+
+    role = "Employee Self Service"
+    if not frappe.db.exists("Role", role):
+        return
+    for dt in ESS_READ_DOCTYPES:
+        if not frappe.db.exists("DocType", dt):
+            continue
+        existing = frappe.db.get_value(
+            "Custom DocPerm",
+            {"parent": dt, "role": role, "permlevel": 0},
+            "name",
+        )
+        if existing:
+            frappe.db.set_value(
+                "Custom DocPerm", existing, "read", 1, update_modified=False
+            )
+            continue
+        try:
+            frappe.get_doc({
+                "doctype":     "Custom DocPerm",
+                "parent":      dt,
+                "parenttype":  "DocType",
+                "parentfield": "permissions",
+                "role":        role,
+                "permlevel":   0,
+                "read":        1,
+                "write":       0,
+                "create":      0,
+                "delete":      0,
+            }).insert(ignore_permissions=True)
+        except Exception:
+            frappe.logger("skyengpro").exception(
+                "ensure_ess_read_doctype_perms: insert failed for %s/%s",
+                dt, role,
+            )
+
+
+def backfill_employee_self_service_role():
+    """Make sure every user with the Employee role also has the
+    Employee Self Service role.
+
+    DEFAULT_USER_ROLES adds Employee Self Service to brand-new users
+    via the on_user_after_insert hook, but pre-existing users
+    (created before this app was installed or before that hook was
+    wired) are stuck with just Employee — and Employee on its own
+    has no read on Account/Currency, so the Expense Claim form
+    bombs. This backfill plugs that gap. Idempotent.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT hr.parent AS user
+        FROM `tabHas Role` hr
+        WHERE hr.parenttype = 'User'
+          AND hr.role = 'Employee'
+          AND hr.parent NOT IN ('Administrator', 'Guest')
+          AND NOT EXISTS (
+            SELECT 1 FROM `tabHas Role` hr2
+            WHERE hr2.parent = hr.parent
+              AND hr2.parenttype = 'User'
+              AND hr2.role = 'Employee Self Service'
+          )
+        """,
+        as_dict=True,
+    )
+    if not rows:
+        return
+    for r in rows:
+        try:
+            frappe.db.sql(
+                """
+                INSERT INTO `tabHas Role`
+                  (name, creation, modified, modified_by, owner,
+                   docstatus, idx, role, parent, parenttype, parentfield)
+                VALUES
+                  (UUID(), NOW(), NOW(), 'Administrator', 'Administrator',
+                   0, 1, 'Employee Self Service', %s, 'User', 'roles')
+                """,
+                (r["user"],),
+            )
+        except Exception:
+            frappe.logger("skyengpro").exception(
+                "backfill_employee_self_service_role: failed for %s", r["user"]
+            )
+    frappe.logger("skyengpro").info(
+        "backfill_employee_self_service_role: added ESS role to %d user(s)",
+        len(rows),
+    )
 
 
 def ensure_self_service_workspace():

@@ -338,6 +338,27 @@ DEFAULT_USER_ROLES = ["Employee", "Employee Self Service"]
 
 
 # ─────────────────────────────────────────────────────────────
+# Employee Self Service read-perm grants
+#
+# The Expense Claim and Employee Advance forms link to Account /
+# Currency / Mode of Payment / Cost Center records during their
+# autocomplete. Frappe's Account/Cost Center are scoped to
+# Accounts module which the Module Profile blocks for regular
+# employees — so the autocomplete fails with "Insufficient
+# Permission for Account/Currency/...". Granting read on ESS at
+# permlevel 0 is the canonical answer and matches what stock
+# Frappe ships before the per-tenant lockdown rewrites the
+# Custom DocPerm rows.
+# ─────────────────────────────────────────────────────────────
+ESS_READ_DOCTYPES = [
+    "Account",
+    "Currency",
+    "Mode of Payment",
+    "Cost Center",
+]
+
+
+# ─────────────────────────────────────────────────────────────
 # Wave 2: field-level permlevel gates
 #
 # Each entry hides a doctype's tab/section by raising the `permlevel`
