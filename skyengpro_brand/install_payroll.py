@@ -389,7 +389,7 @@ def install_bulletin_de_paie():
         pf.name = name
     pf.update({
         "doc_type": "Salary Slip",
-        "module": "SkyEngPro Brand",
+        "module": "Payroll",
         "standard": "No",
         "disabled": 0,
         "custom_format": 1,
@@ -412,6 +412,30 @@ def install_bulletin_de_paie():
     frappe.logger("skyengpro").info("Bulletin de Paie print format synced.")
 
 
+def set_bulletin_as_default_print_format():
+    """Make 'Bulletin de Paie' the default Print Format for Salary Slip
+    via a Property Setter so every user's print dialog auto-selects it.
+    """
+    name = "Salary Slip-main-default_print_format"
+    if frappe.db.exists("Property Setter", name):
+        ps = frappe.get_doc("Property Setter", name)
+    else:
+        ps = frappe.new_doc("Property Setter")
+    ps.update({
+        "doctype_or_field": "DocType",
+        "doc_type": "Salary Slip",
+        "property": "default_print_format",
+        "value": "Bulletin de Paie",
+        "property_type": "Data",
+    })
+    ps.flags.ignore_permissions = True
+    if ps.is_new():
+        ps.insert(ignore_permissions=True)
+    else:
+        ps.save(ignore_permissions=True)
+    frappe.db.commit()
+
+
 # ---------------------------------------------------------------------------
 # Combined entry point — called from install.after_install
 # ---------------------------------------------------------------------------
@@ -420,3 +444,4 @@ def setup_payroll():
     """Run all payroll setup steps in order."""
     ensure_payroll_custom_fields()
     install_bulletin_de_paie()
+    set_bulletin_as_default_print_format()
