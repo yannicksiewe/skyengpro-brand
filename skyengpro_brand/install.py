@@ -172,7 +172,18 @@ def after_install():
     from skyengpro_brand.install_payroll import setup_payroll
     setup_payroll()
 
-    # 16. Payroll payable account wiring. Two-layer fix:
+    # 16. Accounting sub-workspaces. ERPNext only ships Invoicing +
+    #     Financial Reports under module=Accounts, but our sidebar /
+    #     onboarding modal references seven more (Payments, Banking,
+    #     Taxes, Budget, Share Management, Subscription, Accounts
+    #     Setup) — clicking those was a silent no-op until we created
+    #     them. Idempotent: existing workspaces are left untouched.
+    from skyengpro_brand.setup_accounting_workspaces import (
+        ensure_accounting_workspaces,
+    )
+    ensure_accounting_workspaces()
+
+    # 17. Payroll payable account wiring. Two-layer fix:
     #     a) populate Company.default_payroll_payable_account from
     #        config so the form-level default is correct, AND
     #     b) backfill that value onto every submitted Salary
