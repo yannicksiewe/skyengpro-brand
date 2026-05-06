@@ -56,8 +56,17 @@ def after_install():
     #     every user with a linked Employee. ESS's if_owner doesn't
     #     cover list/report/REST — User Permission does. Runs after
     #     module profiles so role-related setup is complete.
-    from skyengpro_brand.user_lifecycle import ensure_user_employee_permissions
+    from skyengpro_brand.user_lifecycle import (
+        cleanup_hr_user_employee_permissions,
+        ensure_user_employee_permissions,
+    )
     ensure_user_employee_permissions()
+    # Strip Employee→self UP rows from any user that now has an HR
+    # role. The leak protection isn't meant for them, and the row
+    # silently clamps Payroll Entry / bulk Salary Slip / Employee
+    # list to a single record. Runs after ensure_* so the universe
+    # of UP rows is fully populated first.
+    cleanup_hr_user_employee_permissions()
 
     # 3c. Wave 2: field-level permlevel gates on Project + Company +
     #     Employee. Hides Costing/More Info tabs on Project, the
@@ -162,6 +171,23 @@ def after_install():
     #     for Salary Slip. See install_payroll.py.
     from skyengpro_brand.install_payroll import setup_payroll
     setup_payroll()
+
+    # 16. Payroll payable account wiring. Two-layer fix:
+    #     a) populate Company.default_payroll_payable_account from
+    #        config so the form-level default is correct, AND
+    #     b) backfill that value onto every submitted Salary
+    #        Structure Assignment that's missing it. Without (b),
+    #        Payroll Entry → Get Employees silently filters out
+    #        every employee whose SSA pre-dates the company default
+    #        (the Get Employees join requires equal PPA on both
+    #        sides). The validate hook in hooks.py closes the gap
+    #        on future SSA inserts.
+    from skyengpro_brand.payroll_setup import (
+        backfill_ssa_payroll_payable_account,
+        set_company_payroll_payable_defaults,
+    )
+    set_company_payroll_payable_defaults()
+    backfill_ssa_payroll_payable_account()
 
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")

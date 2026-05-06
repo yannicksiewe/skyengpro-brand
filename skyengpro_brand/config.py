@@ -670,3 +670,24 @@ COMPANY_DEFAULTS = {
         "tax_rate": 20.0,
     },
 }
+
+
+# ─────────────────────────────────────────────────────────────
+# Payroll payable account per Company (mirrors what HR set up
+# in the Chart of Accounts). Used to (a) populate
+# Company.default_payroll_payable_account when blank and
+# (b) backfill Salary Structure Assignment.payroll_payable_account
+# on rows created before the field was set on either side.
+#
+# Without a matching value on the SSA, Payroll Entry → Get
+# Employees silently filters out the employee — they don't
+# show up on the bulk salary slip dialog and look as if they
+# have no Salary Structure Assignment at all.
+#
+# Add an entry per Company that has its own Chart of Accounts.
+# Companies absent from this map are left untouched (HR sets
+# their default manually via the Company form).
+# ─────────────────────────────────────────────────────────────
+COMPANY_PAYROLL_PAYABLE_ACCOUNTS = {
+    "Sky Engineering Professional": "422-Personnel, rémunérations dues - SEP",
+}

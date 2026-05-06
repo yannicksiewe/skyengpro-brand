@@ -131,6 +131,15 @@ doc_events = {
         "after_insert": "skyengpro_brand.user_lifecycle.on_employee_save",
         "on_update":    "skyengpro_brand.user_lifecycle.on_employee_save",
     },
+    # Default Salary Structure Assignment.payroll_payable_account
+    # from Company.default_payroll_payable_account on validate.
+    # Without this fallback, an SSA created before HR sets the
+    # account on the Company form gets PPA=NULL and silently
+    # vanishes from Payroll Entry → Get Employees (the dialog's
+    # join requires equal PPA on the Payroll Entry and the SSA).
+    "Salary Structure Assignment": {
+        "validate": "skyengpro_brand.payroll_setup.validate_ssa_set_default_ppa",
+    },
 }
 
 after_install = "skyengpro_brand.install.after_install"

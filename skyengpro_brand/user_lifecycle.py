@@ -18,6 +18,18 @@ for_value=<employee.name>, applicable_for=NULL ("apply to all
 doctypes"). Frappe then forces every list/report/REST query of a
 doctype that has an `employee` link to be filtered to that Employee.
 
+Carve-out for HR-role users
+───────────────────────────
+The leak fix targets Employee Self Service users who must NOT see
+peers. But users with HR Manager / HR User / System Manager roles
+are explicitly authorised to see every employee — Payroll Entry,
+bulk Salary Slip generation, Leave approvals, etc. all break when
+their visibility is scoped to a single Employee. So we skip UP
+creation (and proactively delete existing rows) for those roles.
+Their self-service surfaces (own Leave Application / Expense Claim)
+remain functional via Employee.user_id matching, which doesn't
+depend on User Permission.
+
 Idempotent — re-running on every migrate is safe and cheap.
 """
 import frappe
@@ -27,6 +39,23 @@ from skyengpro_brand.setup_roles import (
     ensure_user_has_default_roles,
     sync_user_module_profile,
 )
+
+
+# Users with any of these roles bypass the User → Employee permission
+# scoping — their job requires cross-employee visibility.
+HR_BYPASS_ROLES = {"HR Manager", "HR User", "System Manager"}
+
+
+def _user_sees_all_employees(user: str) -> bool:
+    """Return True if the user has a role that grants legitimate
+    cross-employee visibility. Such users must NOT receive a
+    User Permission Employee→self row, since it would clamp every
+    Employee-linked query to a single record and break HR/payroll
+    workflows."""
+    if user in ("Administrator",):
+        return True
+    roles = set(frappe.get_roles(user) or [])
+    return bool(roles & HR_BYPASS_ROLES)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -87,7 +116,17 @@ def ensure_user_employee_permissions():
         as_dict=True,
     )
     created = 0
+    skipped_hr = 0
     for r in rows:
+        # HR-role users bypass the scoping. The leak protection
+        # exists to stop ESS users from listing peer payslips —
+        # users who are explicitly authorised to see all employees
+        # (HR Manager / HR User / System Manager) must keep that
+        # visibility, otherwise their Employee list / Payroll Entry
+        # / bulk Salary Slip flows return only themselves.
+        if _user_sees_all_employees(r["user_id"]):
+            skipped_hr += 1
+            continue
         existing = frappe.db.exists(
             "User Permission",
             {
@@ -115,7 +154,49 @@ def ensure_user_employee_permissions():
             )
     frappe.db.commit()
     frappe.logger("skyengpro").info(
-        "ensure_user_employee_permissions: created %d User Permission row(s)", created
+        "ensure_user_employee_permissions: created %d row(s), skipped %d HR-role user(s)",
+        created, skipped_hr,
+    )
+
+
+def cleanup_hr_user_employee_permissions():
+    """Remove `User Permission Employee → self` rows that already
+    exist for users who now have HR Manager / HR User / System
+    Manager. These rows were created by an earlier pass (when the
+    user only had ESS roles) and stayed behind when the user was
+    promoted to HR — silently breaking their Employee list view.
+
+    Idempotent: re-running on every migrate is safe and cheap.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT up.name, up.user, up.for_value
+        FROM `tabUser Permission` up
+        WHERE up.allow = 'Employee'
+          AND up.apply_to_all_doctypes = 1
+          AND up.user NOT IN ('Administrator', 'Guest')
+        """,
+        as_dict=True,
+    )
+    deleted = 0
+    for r in rows:
+        if not _user_sees_all_employees(r["user"]):
+            continue
+        try:
+            frappe.delete_doc(
+                "User Permission", r["name"],
+                force=1, ignore_permissions=True,
+            )
+            deleted += 1
+        except Exception:
+            frappe.logger("skyengpro").exception(
+                "cleanup_hr_user_employee_permissions: delete failed for %s",
+                r["name"],
+            )
+    if deleted:
+        frappe.db.commit()
+    frappe.logger("skyengpro").info(
+        "cleanup_hr_user_employee_permissions: removed %d row(s)", deleted
     )
 
 
@@ -179,6 +260,10 @@ def on_employee_save(doc, method=None):
     stale UP just becomes a no-op for that user."""
     user_id = getattr(doc, "user_id", None)
     if not user_id or user_id in ("Administrator", "Guest"):
+        return
+    # HR Manager / HR User / System Manager need cross-employee
+    # visibility — never scope them to a single Employee record.
+    if _user_sees_all_employees(user_id):
         return
     existing = frappe.db.exists(
         "User Permission",
