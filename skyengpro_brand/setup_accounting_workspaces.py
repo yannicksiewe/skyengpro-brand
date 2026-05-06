@@ -73,7 +73,11 @@ _SPECS = {
             ("Tax Withholding Category",            "DocType", "Tax Withholding Category"),
         ],
     ),
-    "Budget": (
+    # Named "Budgeting" (not "Budget") — Frappe's
+    # validate_route_conflict refuses to register a Workspace whose
+    # route collides with an existing DocType, and the Budget DocType
+    # already owns /app/budget.
+    "Budgeting": (
         "accounting",
         "Cost Center & Budgeting",
         [
@@ -95,7 +99,9 @@ _SPECS = {
             ("Share Balance",   "Report",  "Share Balance"),
         ],
     ),
-    "Subscription": (
+    # Named "Subscriptions" (plural) — same route-collision reason as
+    # Budgeting above; the Subscription DocType owns /app/subscription.
+    "Subscriptions": (
         "non_profit",
         "Subscription Management",
         [
