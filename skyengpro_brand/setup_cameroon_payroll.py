@@ -91,10 +91,14 @@ _COMPONENTS = [
      "is_tax_applicable": 1,
      "description": "Per-employee, manual. Cameroon Labor Code: 4% after 2 yrs, +2% per 2 yrs, capped 25%. HR enters via Additional Salary monthly until we wire automatic computation."},
 
+    {"name": "Prime de Restauration", "abbr": "PR", "type": "Earning",
+     "is_tax_applicable": 1,
+     "description": "Catering / meal allowance. Default 30,000 XAF/month for every employee. Fully taxable in Cameroon (no specific exemption like Prime de Transport's first 30k)."},
+
     # ── Statistical Earning (intermediate calc, not in gross) ──
     {"name": "Salaire Brut Imposable", "abbr": "SBI", "type": "Earning",
      "statistical_component": 1, "is_tax_applicable": 0,
-     "description": "Statistical: taxable base used by all deduction formulas. SB + transport excess + housing excess + ancienneté."},
+     "description": "Statistical: taxable base used by all deduction formulas. SB + transport excess + housing excess + ancienneté + catering."},
 
     # ── Deductions (employee side, real) ──
     {"name": "CNPS Salariale", "abbr": "CNPS_S", "type": "Deduction",
@@ -145,8 +149,9 @@ _STRUCTURE_EARNINGS = [
     ("Prime de Transport",      None,  None,           30000, 0),
     ("Prime de Logement",       None,  None,               0, 0),
     ("Prime d'Ancienneté",      None,  None,               0, 0),
+    ("Prime de Restauration",   None,  None,           30000, 0),
     ("Salaire Brut Imposable",
-     "SB + max(0, PT - 30000) + max(0, PL - min(PL, SB * 0.15, 500000)) + PA",
+     "SB + max(0, PT - 30000) + max(0, PL - min(PL, SB * 0.15, 500000)) + PA + PR",
      None, None, 1),
 ]
 
