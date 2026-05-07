@@ -37,11 +37,14 @@ _FIELD = {
         "bank accounts."
     ),
     # Static link filters — only show company-owned, non-disabled
-    # bank accounts in the dropdown. We don't filter by
-    # doc.company at this layer because that requires a client
-    # script; the description nudges the user, and the dropdown
-    # shows the company column so the right pick is obvious.
-    "link_filters":      '[["is_company_account","=",1],["disabled","=",0]]',
+    # bank accounts in the dropdown. We use the DICT format here
+    # rather than the array-of-triplets format, because Frappe v16's
+    # frontend has a parsing bug with integer-valued triplets like
+    # `["disabled","=",0]` (it produces a malformed `{"=":[0,null]}`
+    # filter and the backend crashes with
+    # `'int' object has no attribute 'lower'`). The dict form is
+    # unambiguous and unaffected.
+    "link_filters":      '{"is_company_account":1,"disabled":0}',
     "in_standard_filter": 0,
     "translatable":       0,
     "no_copy":            1,
