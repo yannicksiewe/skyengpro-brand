@@ -183,7 +183,18 @@ def after_install():
     )
     ensure_accounting_workspaces()
 
-    # 17. Sales Invoice bank-account picker. Adds a per-invoice
+    # 17. Strict-User-Permission exemptions on Link fields that would
+    #     otherwise block multi-company users from creating routine
+    #     docs (Purchase Invoice, Sales Order, etc.). Specifically
+    #     letter_head (NULL company on the global default LH) and
+    #     represents_company (almost always blank). See
+    #     setup_strict_up_exemptions.py for the long story.
+    from skyengpro_brand.setup_strict_up_exemptions import (
+        ensure_strict_up_exemptions,
+    )
+    ensure_strict_up_exemptions()
+
+    # 18. Sales Invoice bank-account picker. Adds a per-invoice
     #     selector that the SkyEngPro Invoice print format honours,
     #     so the user can route a specific invoice's printed PDF at
     #     a specific bank instead of always rendering all three.
@@ -192,7 +203,7 @@ def after_install():
     )
     setup_invoice_bank_selection()
 
-    # 18. Payroll payable account wiring. Two-layer fix:
+    # 19. Payroll payable account wiring. Two-layer fix:
     #     a) populate Company.default_payroll_payable_account from
     #        config so the form-level default is correct, AND
     #     b) backfill that value onto every submitted Salary
