@@ -183,7 +183,16 @@ def after_install():
     )
     ensure_accounting_workspaces()
 
-    # 17. Payroll payable account wiring. Two-layer fix:
+    # 17. Sales Invoice bank-account picker. Adds a per-invoice
+    #     selector that the SkyEngPro Invoice print format honours,
+    #     so the user can route a specific invoice's printed PDF at
+    #     a specific bank instead of always rendering all three.
+    from skyengpro_brand.setup_invoice_bank import (
+        setup_invoice_bank_selection,
+    )
+    setup_invoice_bank_selection()
+
+    # 18. Payroll payable account wiring. Two-layer fix:
     #     a) populate Company.default_payroll_payable_account from
     #        config so the form-level default is correct, AND
     #     b) backfill that value onto every submitted Salary
