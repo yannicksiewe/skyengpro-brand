@@ -203,7 +203,18 @@ def after_install():
     )
     setup_invoice_bank_selection()
 
-    # 19. Payroll payable account wiring. Two-layer fix:
+    # 19. Cameroon Standard 2026 — canonical Salary Components +
+    #     one master Salary Structure, formula-driven so the same
+    #     structure works for any net-salary range. Idempotent and
+    #     versioned by year (next year, copy this module to 2027 and
+    #     migrate employees via SSA — the 2026 structure is left
+    #     untouched as historical reference).
+    from skyengpro_brand.setup_cameroon_payroll import (
+        setup_cameroon_payroll,
+    )
+    setup_cameroon_payroll()
+
+    # 20. Payroll payable account wiring. Two-layer fix:
     #     a) populate Company.default_payroll_payable_account from
     #        config so the form-level default is correct, AND
     #     b) backfill that value onto every submitted Salary
