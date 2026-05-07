@@ -36,15 +36,20 @@ _FIELD = {
         "invoice PDF. Leave blank to show all of this company's "
         "bank accounts."
     ),
-    # Static link filters — only show company-owned, non-disabled
-    # bank accounts in the dropdown. We use the DICT format here
-    # rather than the array-of-triplets format, because Frappe v16's
-    # frontend has a parsing bug with integer-valued triplets like
-    # `["disabled","=",0]` (it produces a malformed `{"=":[0,null]}`
-    # filter and the backend crashes with
-    # `'int' object has no attribute 'lower'`). The dict form is
-    # unambiguous and unaffected.
-    "link_filters":      '{"is_company_account":1,"disabled":0}',
+    # link_filters left empty: a Client Script (installed below)
+    # owns the dropdown filter via frm.set_query. Reasoning:
+    #   * Array-of-triplets format `[[…,"=",0]]` triggers a Frappe v16
+    #     frontend parsing bug that mangles integer-0 values into
+    #     `{"=":[0,null]}` and crashes the backend.
+    #   * Dict format `{"is_company_account":1,"disabled":0}` doesn't
+    #     crash but the v16 autocomplete returns zero results
+    #     regardless — the static-filter code path doesn't surface
+    #     them in the dropdown.
+    #   * Client Script with `frm.set_query` is reliable across
+    #     versions and has the bonus of dynamic filtering on
+    #     `frm.doc.company` (so the dropdown narrows to the
+    #     invoice's company, which static filters can't do).
+    "link_filters":      "[]",
     "in_standard_filter": 0,
     "translatable":       0,
     "no_copy":            1,
@@ -127,8 +132,59 @@ def update_invoice_print_format():
 # Public entry point
 # ─────────────────────────────────────────────────────────────
 
+_CLIENT_SCRIPT_NAME = "Sales Invoice — company_bank_account filter"
+
+_CLIENT_SCRIPT_BODY = (
+    "frappe.ui.form.on('Sales Invoice', {"
+    " setup(frm) {"
+    "   frm.set_query('company_bank_account', function() {"
+    "     return {"
+    "       filters: {"
+    "         is_company_account: 1,"
+    "         disabled: 0,"
+    "         company: frm.doc.company || ''"
+    "       }"
+    "     };"
+    "   });"
+    " },"
+    " company(frm) {"
+    "   frm.set_value('company_bank_account', null);"
+    " }"
+    "});"
+)
+
+
+def ensure_invoice_bank_client_script():
+    """Install the Client Script that filters the company_bank_account
+    dropdown to (is_company_account=1, disabled=0, company=doc.company)
+    and clears the picked bank when the invoice's Company changes.
+
+    Idempotent — re-runs upsert the script body and re-enable the
+    rule, so an admin who toggled it off in the UI gets it back on
+    the next migrate.
+    """
+    if frappe.db.exists("Client Script", _CLIENT_SCRIPT_NAME):
+        cs = frappe.get_doc("Client Script", _CLIENT_SCRIPT_NAME)
+        cs.dt      = "Sales Invoice"
+        cs.view    = "Form"
+        cs.script  = _CLIENT_SCRIPT_BODY
+        cs.enabled = 1
+        cs.save(ignore_permissions=True)
+        return
+    cs = frappe.get_doc({
+        "doctype": "Client Script",
+        "name":    _CLIENT_SCRIPT_NAME,
+        "dt":      "Sales Invoice",
+        "view":    "Form",
+        "script":  _CLIENT_SCRIPT_BODY,
+        "enabled": 1,
+    })
+    cs.insert(ignore_permissions=True)
+
+
 def setup_invoice_bank_selection():
-    """Run both steps. Called from install.after_install."""
+    """Run all three steps. Called from install.after_install."""
     ensure_invoice_bank_field()
+    ensure_invoice_bank_client_script()
     update_invoice_print_format()
     frappe.db.commit()
