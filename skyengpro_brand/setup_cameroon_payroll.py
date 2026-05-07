@@ -95,10 +95,14 @@ _COMPONENTS = [
      "is_tax_applicable": 1,
      "description": "Catering / meal allowance. Default 30,000 XAF/month for every employee. Fully taxable in Cameroon (no specific exemption like Prime de Transport's first 30k)."},
 
+    {"name": "Prime d'Assurance", "abbr": "PI", "type": "Earning",
+     "is_tax_applicable": 1,
+     "description": "Insurance benefit (health, life, etc). Default 0 — set per-employee via Additional Salary or override on the SSA. Treated as fully taxable; if a specific insurance qualifies for a CGI exemption, subtract that portion in the SBI formula."},
+
     # ── Statistical Earning (intermediate calc, not in gross) ──
     {"name": "Salaire Brut Imposable", "abbr": "SBI", "type": "Earning",
      "statistical_component": 1, "is_tax_applicable": 0,
-     "description": "Statistical: taxable base used by all deduction formulas. SB + transport excess + housing excess + ancienneté + catering."},
+     "description": "Statistical: taxable base used by all deduction formulas. SB + transport excess + housing excess + ancienneté + catering + insurance."},
 
     # ── Deductions (employee side, real) ──
     {"name": "CNPS Salariale", "abbr": "CNPS_S", "type": "Deduction",
@@ -150,8 +154,9 @@ _STRUCTURE_EARNINGS = [
     ("Prime de Logement",       None,  None,               0, 0),
     ("Prime d'Ancienneté",      None,  None,               0, 0),
     ("Prime de Restauration",   None,  None,           30000, 0),
+    ("Prime d'Assurance",       None,  None,               0, 0),
     ("Salaire Brut Imposable",
-     "SB + max(0, PT - 30000) + max(0, PL - min(PL, SB * 0.15, 500000)) + PA + PR",
+     "SB + max(0, PT - 30000) + max(0, PL - min(PL, SB * 0.15, 500000)) + PA + PR + PI",
      None, None, 1),
 ]
 
