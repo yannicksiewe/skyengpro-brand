@@ -199,14 +199,6 @@ _STRUCTURE_EARNINGS = [
     ("Prime d'Ancienneté",      None,   None,               0, 0),
     ("Prime de Restauration",   None,   None,           30000, 0),
     ("Prime d'Assurance",       None,   None,               0, 0),
-    # SBI: ternary form (no max/min) — see _STRUCTURE_DEDUCTIONS comment.
-    ("Salaire Brut Imposable",
-     "SB + (PT - 30000 if PT > 30000 else 0)"
-     " + (PL - (PL if (PL <= SB * 0.15 and PL <= 500000) "
-     "          else (SB * 0.15 if SB * 0.15 <= 500000 else 500000)) "
-     "    if PL > 0 else 0)"
-     " + PA + PR + PI",
-     None, None, 1),
 ]
 
 # Brackets pulled out into named constants so they're greppable.
@@ -248,7 +240,25 @@ _IRPP_FORMULA = (
 # ERPNext's salary-formula sandbox does NOT expose Python's `max` / `min`
 # builtins. We use ternary expressions instead (`(a if a <= b else b)`
 # instead of `min(a, b)`).
+#
+# SBI lives at idx=1 in DEDUCTIONS (not earnings), even though it's
+# really an "earning intermediate". Reason: ERPNext computes earning
+# rows BEFORE Additional Salary entries override per-employee amounts
+# (Prime de Transport, Prime de Logement, etc.). If SBI were in
+# earnings, it would lock in the structure-default amounts and miss
+# every per-employee override. Computing it as the FIRST deduction
+# (with do_not_include_in_total=1 to keep it out of total_deduction)
+# means by the time it runs, the slip's earnings table already
+# reflects every Additional Salary override, so SBI sees the right
+# values.
 _STRUCTURE_DEDUCTIONS = [
+    ("Salaire Brut Imposable",
+     "SB + (PT - 30000 if PT > 30000 else 0)"
+     " + (PL - (PL if (PL <= SB * 0.15 and PL <= 500000) "
+     "          else (SB * 0.15 if SB * 0.15 <= 500000 else 500000)) "
+     "    if PL > 0 else 0)"
+     " + PA + PR + PI",
+     None, None, 1),
     ("CNPS Salariale",        "(SBI if SBI <= 750000 else 750000) * 0.042",         None, None, 1),
     ("CFC",                   "SBI * 0.01",                                          None, None, 1),
     ("Salaire Net Imposable",
