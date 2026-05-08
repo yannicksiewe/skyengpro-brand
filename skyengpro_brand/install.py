@@ -194,6 +194,19 @@ def after_install():
     )
     ensure_strict_up_exemptions()
 
+    # 17b. Salary Structure Assignment optional-field fixes.
+    #      HRMS marks four India-payroll fields as mandatory by
+    #      default (income_tax_slab, taxable_earnings_till_date,
+    #      tax_deducted_till_date, payroll_cost_centers). We don't use
+    #      them in our Cameroon setup (IRPP is computed via formulas;
+    #      cost allocation happens at JE level). Without this fix,
+    #      Bulk Salary Structure Assignment fails for every employee
+    #      with MandatoryError. See setup_payroll_field_fixes.py.
+    from skyengpro_brand.setup_payroll_field_fixes import (
+        ensure_ssa_optional_fields,
+    )
+    ensure_ssa_optional_fields()
+
     # 18. Sales Invoice bank-account picker. Adds a per-invoice
     #     selector that the SkyEngPro Invoice print format honours,
     #     so the user can route a specific invoice's printed PDF at
