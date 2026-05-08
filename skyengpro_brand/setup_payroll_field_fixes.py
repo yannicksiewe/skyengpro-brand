@@ -53,17 +53,51 @@ _DISABLED_HRMS_REPORTS = [
 
 
 def ensure_india_reports_disabled():
-    """Set Report.disabled=1 on India-only HRMS reports that error or
-    return nothing useful in our Cameroon site. Idempotent."""
+    """Disable India-only HRMS reports that error or return nothing
+    useful in our Cameroon site, AND scrub them from sidebars + role
+    grants so they don't appear in the desk at all.
+
+    `Report.disabled=1` blocks the report from running but doesn't hide
+    it from the desk's report list / workspace sidebar — which is why
+    users still see them and click through to the "Report X is
+    disabled" message. To make them truly invisible, also:
+
+      - Delete `tabHas Role` rows for the report (no role -> not in
+        anyone's role-filtered listing).
+      - Delete `tabWorkspace Link` and `tabWorkspace Shortcut` rows
+        that reference the report (no workspace cards / sidebar entries).
+
+    HRMS recreates the standard reports' Has Role + Workspace Link
+    rows on every `bench migrate`, so this function MUST run on every
+    after_install. Idempotent.
+    """
     for r in _DISABLED_HRMS_REPORTS:
         if not frappe.db.exists("Report", r):
             continue
         cur = frappe.db.get_value("Report", r, "disabled")
         if not cur:
             frappe.db.set_value("Report", r, "disabled", 1, update_modified=False)
-            frappe.logger("skyengpro").info(
-                "ensure_india_reports_disabled: disabled %s", r,
-            )
+        # Strip role grants so the report disappears from role-filtered
+        # listings (everywhere except for users with bypass).
+        frappe.db.sql(
+            "DELETE FROM `tabHas Role` WHERE parenttype='Report' AND parent=%s",
+            (r,),
+        )
+        # Strip workspace links + shortcuts so the report doesn't show
+        # up in any workspace's sidebar or shortcut card.
+        frappe.db.sql(
+            "DELETE FROM `tabWorkspace Link` "
+            "WHERE link_type='Report' AND link_to=%s",
+            (r,),
+        )
+        frappe.db.sql(
+            "DELETE FROM `tabWorkspace Shortcut` "
+            "WHERE type='Report' AND link_to=%s",
+            (r,),
+        )
+        frappe.logger("skyengpro").info(
+            "ensure_india_reports_disabled: disabled+scrubbed %s", r,
+        )
     frappe.db.commit()
 
 
