@@ -202,10 +202,16 @@ def after_install():
     #      cost allocation happens at JE level). Without this fix,
     #      Bulk Salary Structure Assignment fails for every employee
     #      with MandatoryError. See setup_payroll_field_fixes.py.
+    #
+    #      Also disables India-only HRMS Reports that error out against
+    #      our schema (Professional Tax Deductions queries a column
+    #      that doesn't exist in this version, etc.).
     from skyengpro_brand.setup_payroll_field_fixes import (
         ensure_ssa_optional_fields,
+        ensure_india_reports_disabled,
     )
     ensure_ssa_optional_fields()
+    ensure_india_reports_disabled()
 
     # 18. Sales Invoice bank-account picker. Adds a per-invoice
     #     selector that the SkyEngPro Invoice print format honours,

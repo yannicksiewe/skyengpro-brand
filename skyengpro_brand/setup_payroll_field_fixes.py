@@ -38,6 +38,35 @@ _OPTIONAL_SSA_FIELDS = [
 ]
 
 
+# Reports shipped by HRMS that target India-payroll-only concepts. They
+# either error against our (non-IN) schema or return useless data; we
+# disable them so they don't surface on the desk for our users.
+#
+# Concretely: as of HRMS v16.6.1, Professional Tax Deductions queries
+# `tabSalary Component.component_type` which doesn't exist in this
+# schema, leading to a 500 OperationalError when run.
+_DISABLED_HRMS_REPORTS = [
+    "Professional Tax Deductions",
+    "Income Tax Deductions",
+    "Provident Fund Deductions",
+]
+
+
+def ensure_india_reports_disabled():
+    """Set Report.disabled=1 on India-only HRMS reports that error or
+    return nothing useful in our Cameroon site. Idempotent."""
+    for r in _DISABLED_HRMS_REPORTS:
+        if not frappe.db.exists("Report", r):
+            continue
+        cur = frappe.db.get_value("Report", r, "disabled")
+        if not cur:
+            frappe.db.set_value("Report", r, "disabled", 1, update_modified=False)
+            frappe.logger("skyengpro").info(
+                "ensure_india_reports_disabled: disabled %s", r,
+            )
+    frappe.db.commit()
+
+
 def ensure_ssa_optional_fields():
     """Set reqd=0 on the four SSA fields above. Idempotent."""
     DOCTYPE = "Salary Structure Assignment"
