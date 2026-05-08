@@ -65,6 +65,38 @@ CNPS_P_TOTAL_RATE = 0.042 + 0.07 + CNPS_P_RP_RATE   # 12.95 % default
 
 STRUCTURE_NAME = "Cameroon Standard 2026"
 
+# Per-company Salary Component → GL Account mapping. Applied to each
+# Salary Component's `accounts` child table on every migrate. Without
+# this mapping, Salary Slip submission fails with
+# "Salary Component X is not linked to an account".
+#
+# Statistical components (CNPS Patronale / CFC Patronal / FNE Patronal /
+# SNI / Salaire Net Imposable) are intentionally NOT mapped — they
+# don't post GL entries. Employer-side charges are booked via a
+# separate monthly Journal Entry (Option A in the docs).
+#
+# Salaire Brut Imposable is also unmapped — its
+# `do_not_include_in_total=1` flag excludes it from
+# `get_salary_components_for_gl_entries()` so no GL post happens.
+COMPONENT_ACCOUNT_MAP = {
+    "Sky Engineering Professional": [
+        # ── Earnings (debit to expense) ──
+        ("Salaire de Base",       "6611-Appointements salaires et commissions - SEP"),
+        ("Prime de Transport",    "6634-Indemnités de transport - SEP"),
+        ("Prime de Logement",     "6631-Indemnités de logement - SEP"),
+        ("Prime d'Ancienneté",    "6612-Primes et gratifications - SEP"),
+        ("Prime de Restauration", "6612-Primes et gratifications - SEP"),
+        ("Prime d'Assurance",     "6618-Autres rémunérations directes - SEP"),
+        # ── Employee deductions (credit to liability) ──
+        ("CNPS Salariale",        "4318-Autres cotisations sociales - SEP"),
+        ("CFC",                   "4318-Autres cotisations sociales - SEP"),
+        ("IRPP",                  "4422-Impôts et taxes pour les collectivités publiques - SEP"),
+        ("CAC",                   "4422-Impôts et taxes pour les collectivités publiques - SEP"),
+        ("TDL",                   "4422-Impôts et taxes pour les collectivités publiques - SEP"),
+        ("RAV",                   "4422-Impôts et taxes pour les collectivités publiques - SEP"),
+    ],
+}
+
 
 # ─────────────────────────────────────────────────────────────
 # Salary Component definitions
@@ -237,9 +269,10 @@ _STRUCTURE_DEDUCTIONS = [
 # ─────────────────────────────────────────────────────────────
 
 def setup_cameroon_payroll():
-    """Run all three steps: components, structure, then commit."""
+    """Run all three steps: components, structure, account mapping."""
     _upsert_components()
     _ensure_structure(STRUCTURE_NAME)
+    _map_component_accounts()
     frappe.db.commit()
 
 
@@ -342,6 +375,45 @@ def _row(component_name, formula, condition, default_amount, amount_based_on_for
     if default_amount is not None:
         row["amount"] = default_amount
     return row
+
+
+def _map_component_accounts():
+    """Upsert each Salary Component's `accounts` child row for the
+    company-specific GL account. Idempotent — a re-run leaves an
+    already-correct mapping untouched, and corrects any drift."""
+    for company, mapping in COMPONENT_ACCOUNT_MAP.items():
+        if not frappe.db.exists("Company", company):
+            continue
+        for component, account in mapping:
+            if not frappe.db.exists("Salary Component", component):
+                frappe.logger("skyengpro").warning(
+                    "_map_component_accounts: missing component %s — skipping",
+                    component,
+                )
+                continue
+            if not frappe.db.exists("Account", account):
+                frappe.logger("skyengpro").warning(
+                    "_map_component_accounts: missing account %s for company %s — skipping",
+                    account, company,
+                )
+                continue
+            existing = frappe.db.get_value(
+                "Salary Component Account",
+                {"parent": component, "company": company},
+                "name",
+            )
+            if existing:
+                cur = frappe.db.get_value("Salary Component Account", existing, "account")
+                if cur == account:
+                    continue
+                frappe.db.set_value(
+                    "Salary Component Account", existing, "account", account,
+                    update_modified=False,
+                )
+                continue
+            sc = frappe.get_doc("Salary Component", component)
+            sc.append("accounts", {"company": company, "account": account})
+            sc.save(ignore_permissions=True)
 
 
 def _pick_default_company():
