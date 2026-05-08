@@ -99,10 +99,21 @@ _COMPONENTS = [
      "is_tax_applicable": 1,
      "description": "Insurance benefit (health, life, etc). Default 0 — set per-employee via Additional Salary or override on the SSA. Treated as fully taxable; if a specific insurance qualifies for a CGI exemption, subtract that portion in the SBI formula."},
 
-    # ── Statistical Earning (intermediate calc, not in gross) ──
+    # ── Intermediate calc — non-statistical Earning with
+    # `do_not_include_in_total=1`. Why not statistical? ERPNext resets
+    # the formula scope (`self.data`) BETWEEN the earnings phase and
+    # the deductions phase, so abbreviations of statistical earnings
+    # are invisible to deduction formulas. Making SBI a normal earning
+    # (statistical_component=0) keeps it on the slip's earnings table,
+    # which `get_data_for_eval()` re-reads at the start of the
+    # deductions phase — preserving SBI for CNPS / IRPP / TDL / RAV
+    # formulas. The `do_not_include_in_total=1` flag stops it from
+    # being added to gross_pay, so the slip's gross stays correct
+    # (SB + PT + PL + PA + PR + PI).
     {"name": "Salaire Brut Imposable", "abbr": "SBI", "type": "Earning",
-     "statistical_component": 1, "is_tax_applicable": 0,
-     "description": "Statistical: taxable base used by all deduction formulas. SB + transport excess + housing excess + ancienneté + catering + insurance."},
+     "statistical_component": 0, "do_not_include_in_total": 1,
+     "is_tax_applicable": 0,
+     "description": "Taxable base used by every deduction formula. SB + transport excess + housing excess + ancienneté + catering + insurance. Hidden from gross via do_not_include_in_total."},
 
     # ── Deductions (employee side, real) ──
     {"name": "CNPS Salariale", "abbr": "CNPS_S", "type": "Deduction",
@@ -149,14 +160,20 @@ _COMPONENTS = [
 # Each row: (component_name, formula_or_None, condition_or_None,
 #            default_amount, amount_based_on_formula)
 _STRUCTURE_EARNINGS = [
-    ("Salaire de Base",         None,  None,            None, 0),
-    ("Prime de Transport",      None,  None,           30000, 0),
-    ("Prime de Logement",       None,  None,               0, 0),
-    ("Prime d'Ancienneté",      None,  None,               0, 0),
-    ("Prime de Restauration",   None,  None,           30000, 0),
-    ("Prime d'Assurance",       None,  None,               0, 0),
+    # Salaire de Base flows from the SSA's `base` field via formula="base".
+    ("Salaire de Base",         "base", None,            None, 1),
+    ("Prime de Transport",      None,   None,           30000, 0),
+    ("Prime de Logement",       None,   None,               0, 0),
+    ("Prime d'Ancienneté",      None,   None,               0, 0),
+    ("Prime de Restauration",   None,   None,           30000, 0),
+    ("Prime d'Assurance",       None,   None,               0, 0),
+    # SBI: ternary form (no max/min) — see _STRUCTURE_DEDUCTIONS comment.
     ("Salaire Brut Imposable",
-     "SB + max(0, PT - 30000) + max(0, PL - min(PL, SB * 0.15, 500000)) + PA + PR + PI",
+     "SB + (PT - 30000 if PT > 30000 else 0)"
+     " + (PL - (PL if (PL <= SB * 0.15 and PL <= 500000) "
+     "          else (SB * 0.15 if SB * 0.15 <= 500000 else 500000)) "
+     "    if PL > 0 else 0)"
+     " + PA + PR + PI",
      None, None, 1),
 ]
 
@@ -196,18 +213,22 @@ _IRPP_FORMULA = (
     "(78000 + (SNI - 416667) * 0.385)"
 )
 
+# ERPNext's salary-formula sandbox does NOT expose Python's `max` / `min`
+# builtins. We use ternary expressions instead (`(a if a <= b else b)`
+# instead of `min(a, b)`).
 _STRUCTURE_DEDUCTIONS = [
-    ("CNPS Salariale",        "min(SBI, 750000) * 0.042",          None, None, 1),
-    ("CFC",                   "SBI * 0.01",                        None, None, 1),
+    ("CNPS Salariale",        "(SBI if SBI <= 750000 else 750000) * 0.042",         None, None, 1),
+    ("CFC",                   "SBI * 0.01",                                          None, None, 1),
     ("Salaire Net Imposable",
-     "max(0, SBI * 0.7 - CNPS_S - 41667)",                         None, None, 1),
-    ("IRPP",                  _IRPP_FORMULA,                       None, None, 1),
-    ("CAC",                   "IRPP * 0.10",                       None, None, 1),
-    ("TDL",                   _TDL_FORMULA,                        None, None, 1),
-    ("RAV",                   _RAV_FORMULA,                        None, None, 1),
-    ("CNPS Patronale",        f"min(SBI, 750000) * {CNPS_P_TOTAL_RATE}",  None, None, 1),
-    ("CFC Patronal",          "SBI * 0.015",                       None, None, 1),
-    ("FNE Patronal",          "SBI * 0.01",                        None, None, 1),
+     "((SBI * 0.7 - CNPS_S - 41667) if (SBI * 0.7 - CNPS_S - 41667) > 0 else 0)",   None, None, 1),
+    ("IRPP",                  _IRPP_FORMULA,                                         None, None, 1),
+    ("CAC",                   "IRPP * 0.10",                                         None, None, 1),
+    ("TDL",                   _TDL_FORMULA,                                          None, None, 1),
+    ("RAV",                   _RAV_FORMULA,                                          None, None, 1),
+    ("CNPS Patronale",        f"(SBI if SBI <= 750000 else 750000) * {CNPS_P_TOTAL_RATE}",
+                              None, None, 1),
+    ("CFC Patronal",          "SBI * 0.015",                                         None, None, 1),
+    ("FNE Patronal",          "SBI * 0.01",                                          None, None, 1),
 ]
 
 
