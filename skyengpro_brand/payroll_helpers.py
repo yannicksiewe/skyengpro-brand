@@ -56,6 +56,7 @@ COMPONENT_DISPLAY = {
 EMPLOYER_COMPONENTS = {
     "Fond National de L'emploi",
     "Fond National de L'emploie",
+    "FNE Patronal",
     "CFC Patronal",
     "CNPS Patronale",
 }
