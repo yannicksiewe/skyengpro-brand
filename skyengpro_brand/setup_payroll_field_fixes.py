@@ -29,6 +29,12 @@ _OPTIONAL_SSA_FIELDS = [
     "taxable_earnings_till_date",
     "tax_deducted_till_date",
     "payroll_cost_centers",
+    # `department` is also marked reqd=1 by a stray Property Setter on
+    # this site, but legacy employees may lack a department assignment.
+    # Making it optional lets Bulk Salary Structure Assignment succeed
+    # for employees without a dept; ERPNext falls back to no-dept on
+    # the SSA in that case (acceptable for our reporting).
+    "department",
 ]
 
 
