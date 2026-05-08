@@ -231,6 +231,26 @@ def after_install():
     set_company_payroll_payable_defaults()
     backfill_ssa_payroll_payable_account()
 
+    # 21. EoR tenant scoping. When SEP is the legal employer for
+    #     a client's developers (adorsys, etc.), Employee.company
+    #     diverges from the billed-to tenant. The user's standard
+    #     UP filter on Company would block adorsys-side HR from
+    #     seeing their team. This module:
+    #       a) adds a `client_assignment` Custom Field to Salary
+    #          Slip / SSA / Leave Application / Attendance that
+    #          fetches from Employee.client_assignment;
+    #       b) sets ignore_user_permissions=1 on the `company`
+    #          field of those five doctypes (incl. Employee), so
+    #          UP filtering uses `client_assignment` only;
+    #       c) backfills existing rows from Employee.
+    #     Result: native UP filter does the right thing — a user
+    #     with UP Company=adorsys sees rows whose
+    #     client_assignment=adorsys, regardless of legal employer.
+    from skyengpro_brand.setup_tenant_client_assignment import (
+        setup_tenant_client_assignment,
+    )
+    setup_tenant_client_assignment()
+
     frappe.db.commit()
     frappe.logger("skyengpro").info("SkyEngPro setup: complete.")
 
