@@ -131,21 +131,32 @@ _COMPONENTS = [
      "is_tax_applicable": 1,
      "description": "Insurance benefit (health, life, etc). Default 0 — set per-employee via Additional Salary or override on the SSA. Treated as fully taxable; if a specific insurance qualifies for a CGI exemption, subtract that portion in the SBI formula."},
 
-    # ── Intermediate calc — non-statistical Earning with
-    # `do_not_include_in_total=1`. Why not statistical? ERPNext resets
-    # the formula scope (`self.data`) BETWEEN the earnings phase and
-    # the deductions phase, so abbreviations of statistical earnings
-    # are invisible to deduction formulas. Making SBI a normal earning
-    # (statistical_component=0) keeps it on the slip's earnings table,
-    # which `get_data_for_eval()` re-reads at the start of the
-    # deductions phase — preserving SBI for CNPS / IRPP / TDL / RAV
-    # formulas. The `do_not_include_in_total=1` flag stops it from
-    # being added to gross_pay, so the slip's gross stays correct
-    # (SB + PT + PL + PA + PR + PI).
-    {"name": "Salaire Brut Imposable", "abbr": "SBI", "type": "Earning",
-     "statistical_component": 0, "do_not_include_in_total": 1,
+    # ── Intermediate calc — STATISTICAL Deduction (idx=1 in the
+    # deductions table; see _STRUCTURE_DEDUCTIONS below).
+    #
+    # Why statistical, and why in deductions:
+    #
+    #   * Statistical components don't add a row to the slip and don't
+    #     post a GL entry (the accrual JE generation iterates slip
+    #     rows; missing-account validation never fires for SBI).
+    #
+    #   * Statistical values DO live in `self.data` for the duration of
+    #     the phase that produced them, so subsequent rows in the same
+    #     phase can reference SBI by abbreviation in their own
+    #     formulas (CNPS_S, CFC, IRPP, TDL, RAV all do).
+    #
+    #   * Placing SBI in the deductions phase rather than earnings is
+    #     mandatory: ERPNext computes earnings BEFORE Additional Salary
+    #     entries override per-employee amounts (e.g. Prime de
+    #     Transport at 50k or 75k for a specific employee). If SBI ran
+    #     in the earnings phase, it would lock in the structure-default
+    #     PT and ignore every override. The deductions phase rebuilds
+    #     `self.data` from the slip's earnings table — which by then
+    #     reflects the post-override values.
+    {"name": "Salaire Brut Imposable", "abbr": "SBI", "type": "Deduction",
+     "statistical_component": 1,
      "is_tax_applicable": 0,
-     "description": "Taxable base used by every deduction formula. SB + transport excess + housing excess + ancienneté + catering + insurance. Hidden from gross via do_not_include_in_total."},
+     "description": "Statistical: taxable base used by every deduction formula. Computed at idx=1 of the deductions phase so it sees Additional Salary overrides on PT / PL / PA / PR / PI."},
 
     # ── Deductions (employee side, real) ──
     {"name": "CNPS Salariale", "abbr": "CNPS_S", "type": "Deduction",
