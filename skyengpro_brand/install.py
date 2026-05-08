@@ -203,16 +203,20 @@ def after_install():
     )
     setup_invoice_bank_selection()
 
-    # 19. Cameroon Standard 2026 — canonical Salary Components +
-    #     one master Salary Structure, formula-driven so the same
-    #     structure works for any net-salary range. Idempotent and
-    #     versioned by year (next year, copy this module to 2027 and
-    #     migrate employees via SSA — the 2026 structure is left
-    #     untouched as historical reference).
-    from skyengpro_brand.setup_cameroon_payroll import (
-        setup_cameroon_payroll,
-    )
-    setup_cameroon_payroll()
+    # 19. Cameroon Standard 2026 — DISABLED 2026-05-08.
+    #     The colleague (Beltine, accountant) maintains her own structure
+    #     `Cameroon Standard` which is functionally identical to the
+    #     `Cameroon Standard 2026` this module created, but Administrator-
+    #     created so she repeatedly cancels it on the assumption it's
+    #     duplicate junk. Cancelling cascades to active SSAs + slips and
+    #     destroys monthly payroll runs. Until we align the team on a
+    #     single canonical structure (and either rename hers or merge),
+    #     this auto-creation is suspended. See
+    #     docs/decisions/cameroon-standard-structure.md for the trade-off.
+    # from skyengpro_brand.setup_cameroon_payroll import (
+    #     setup_cameroon_payroll,
+    # )
+    # setup_cameroon_payroll()
 
     # 20. Payroll payable account wiring. Two-layer fix:
     #     a) populate Company.default_payroll_payable_account from
